@@ -1,51 +1,29 @@
-/**
- * Arquivo de configuração das associações entre models
- * Este arquivo deve ser importado após todos os models serem carregados
- */
-
-import User from '../core/auth/models/User.model';
+import Employee from '../core/employees/models/Employee.model';
 import Role from '../core/rbac/models/Role.model';
 import Permission from '../core/rbac/models/Permission.model';
 import UserRole from '../core/rbac/models/UserRole.model';
 import RolePermission from '../core/rbac/models/RolePermission.model';
 
-/**
- * Configura todas as associações entre os models
- */
 export const setupAssociations = (): void => {
-  /**
-   * User <-> Role (Many-to-Many através de UserRole)
-   */
-  User.belongsToMany(Role, {
+  // Employee <-> Role (Many-to-Many via UserRole)
+  Employee.belongsToMany(Role, {
     through: UserRole,
     foreignKey: 'userId',
     otherKey: 'roleId',
     as: 'roles',
   });
 
-  Role.belongsToMany(User, {
+  Role.belongsToMany(Employee, {
     through: UserRole,
     foreignKey: 'roleId',
     otherKey: 'userId',
-    as: 'users',
+    as: 'employees',
   });
 
-  /**
-   * UserRole pertence a User e Role
-   */
-  UserRole.belongsTo(User, {
-    foreignKey: 'userId',
-    as: 'user',
-  });
+  UserRole.belongsTo(Employee, { foreignKey: 'userId', as: 'employee' });
+  UserRole.belongsTo(Role, { foreignKey: 'roleId', as: 'role' });
 
-  UserRole.belongsTo(Role, {
-    foreignKey: 'roleId',
-    as: 'role',
-  });
-
-  /**
-   * Role <-> Permission (Many-to-Many através de RolePermission)
-   */
+  // Role <-> Permission (Many-to-Many via RolePermission)
   Role.belongsToMany(Permission, {
     through: RolePermission,
     foreignKey: 'roleId',
@@ -60,18 +38,8 @@ export const setupAssociations = (): void => {
     as: 'roles',
   });
 
-  /**
-   * RolePermission pertence a Role e Permission
-   */
-  RolePermission.belongsTo(Role, {
-    foreignKey: 'roleId',
-    as: 'role',
-  });
+  RolePermission.belongsTo(Role, { foreignKey: 'roleId', as: 'role' });
+  RolePermission.belongsTo(Permission, { foreignKey: 'permissionId', as: 'permission' });
 
-  RolePermission.belongsTo(Permission, {
-    foreignKey: 'permissionId',
-    as: 'permission',
-  });
-
-  console.log('✅ Associações entre models configuradas');
+  console.log('✅ Associações configuradas');
 };

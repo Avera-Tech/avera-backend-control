@@ -1,12 +1,8 @@
 import { Router } from 'express';
 import authRoutes from './auth.routes';
+import syncRoutes from './sync.routes';
 
 const router = Router();
-
-/**
- * Rotas da aplicação
- */
-router.use('/auth', authRoutes);
 
 /**
  * Health check
@@ -18,5 +14,16 @@ router.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+/**
+ * Rotas da aplicação
+ */
+router.use('/auth', authRoutes);
+
+ 
+/**
+ * Sincronização de models
+ */
+router.use('/sync', syncRoutes);
 
 export default router;
