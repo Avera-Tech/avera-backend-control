@@ -1,10 +1,11 @@
 import { Router, Request, Response } from 'express';
-import Employee from '../core/employees/models/Employee.model';
+import User from '../core/users/models/User.model';
+import Student from '../core/students/models/Students.model';
+import OtpCode from '../core/auth/models/OtpCode.model';
 import Role from '../core/rbac/models/Role.model';
 import Permission from '../core/rbac/models/Permission.model';
 import UserRole from '../core/rbac/models/UserRole.model';
 import RolePermission from '../core/rbac/models/RolePermission.model';
-import Student from '../core/users/models/User.model';
 
 const router = Router();
 
@@ -26,8 +27,9 @@ router.post('/', async (req: Request, res: Response) => {
   const results: Record<string, string> = {};
 
   const models = [
-    { name: 'users',            model: Employee },
+    { name: 'users',        model: User },
     { name: 'students',         model: Student },
+    { name: 'otp_codes',        model: OtpCode },
     { name: 'roles',            model: Role },
     { name: 'permissions',      model: Permission },
     { name: 'user_roles',       model: UserRole },

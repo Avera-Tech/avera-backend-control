@@ -1,35 +1,43 @@
 import { Router } from 'express';
 import { AuthController } from '../core/auth/controllers/AuthController';
+import { PasswordController } from '../core/auth/controllers/PasswordController';
 import { authenticateToken } from '../core/middleware/authenticateToken';
 
 const router = Router();
 
-/**
- * @route POST /api/auth/login
- * @desc Login de usuário
- * @access Public
- */
+// ─── Autenticação ─────────────────────────────────────────────────────────────
+
+/** POST /api/auth/login */
 router.post('/login', AuthController.login);
 
-/**
- * @route POST /api/auth/register
- * @desc Registro de novo usuário
- * @access Public
- */
+/** POST /api/auth/register */
 router.post('/register', AuthController.register);
 
-/**
- * @route POST /api/auth/refresh
- * @desc Renovar token de autenticação
- * @access Public
- */
+/** POST /api/auth/refresh */
 router.post('/refresh', AuthController.refresh);
 
-/**
- * @route GET /api/auth/me
- * @desc Obter dados do usuário autenticado
- * @access Private
- */
+/** GET /api/auth/me */
 router.get('/me', authenticateToken, AuthController.me);
+
+// ─── Verificação de conta (OTP signup) ───────────────────────────────────────
+
+/** POST /api/auth/verify-otp */
+router.post('/verify-otp', PasswordController.verifyOtp);
+
+/** POST /api/auth/resend-otp */
+router.post('/resend-otp', PasswordController.resendOtp);
+
+// ─── Reset de senha ───────────────────────────────────────────────────────────
+
+/** POST /api/auth/request-reset */
+router.post('/request-reset', PasswordController.requestReset);
+
+/** POST /api/auth/reset-password */
+router.post('/reset-password', PasswordController.resetPassword);
+
+// ─── Troca de senha autenticada ───────────────────────────────────────────────
+
+/** POST /api/auth/change-password */
+router.post('/change-password', authenticateToken, PasswordController.changePassword);
 
 export default router;

@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
 import Joi from 'joi';
-import { OtpService } from '../core/auth/services/OtpService';
-import { PasswordService } from '../core/auth/services/PasswordService';
-import User from '../core/users/models/User.model';
+import User from '../../users/models/User.model';
+import { OtpService } from '../services/OtpService';
+import { PasswordService } from '../services/PasswordService';
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 

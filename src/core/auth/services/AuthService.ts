@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import Employee from '../../employees/models/Employee.model';
+import User from '../../users/models/User.model';
 import Role from '../../rbac/models/Role.model';
 import UserRole from '../../rbac/models/UserRole.model';
 
@@ -43,25 +43,25 @@ export class AuthService {
     try {
       const normalizedEmail = email.trim().toLowerCase();
 
-      const employee = await Employee.findOne({ where: { email: normalizedEmail } });
+      const user = await User.findOne({ where: { email: normalizedEmail } });
 
-      if (!employee) {
+      if (!user) {
         return { success: false, error: 'Email ou senha incorretos' };
       }
 
-      if (!employee.active) {
+      if (!user.active) {
         return { success: false, error: 'Conta desativada' };
       }
 
-      const passwordMatch = await bcrypt.compare(password, employee.password);
+      const passwordMatch = await bcrypt.compare(password, user.password);
       if (!passwordMatch) {
         return { success: false, error: 'Email ou senha incorretos' };
       }
 
-      employee.lastLogin = new Date();
-      await employee.save();
+      user.lastLogin = new Date();
+      await user.save();
 
-      const payload: JWTPayload = { userId: employee.id, email: employee.email };
+      const payload: JWTPayload = { userId: user.id, email: user.email };
       const token = this.generateAuthToken(payload);
       const refreshToken = this.generateRefreshToken(payload);
 
@@ -71,9 +71,9 @@ export class AuthService {
         refreshToken,
         expiresIn: (process.env.JWT_EXPIRES_IN || '24h') as jwt.SignOptions['expiresIn'],
         user: {
-          id: employee.id,
-          name: employee.name,
-          email: employee.email,
+          id: user.id,
+          name: user.name,
+          email: user.email,
         },
       };
     } catch (error: any) {
@@ -91,7 +91,7 @@ export class AuthService {
     try {
       const normalizedEmail = email.trim().toLowerCase();
 
-      const existing = await Employee.findOne({ where: { email: normalizedEmail } });
+      const existing = await User.findOne({ where: { email: normalizedEmail } });
       if (existing) {
         return { success: false, error: 'Email já cadastrado' };
       }
@@ -104,7 +104,7 @@ export class AuthService {
       const saltRounds = Number(process.env.BCRYPT_ROUNDS) || 10;
       const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-      const employee = await Employee.create({
+      const user = await User.create({
         name,
         email: normalizedEmail,
         password: hashedPassword,
@@ -113,16 +113,16 @@ export class AuthService {
       });
 
       await UserRole.create({
-        userId: employee.id,
+        userId: user.id,
         roleId: role.id,
       });
 
       return {
         success: true,
         user: {
-          id: employee.id,
-          name: employee.name,
-          email: employee.email,
+          id: user.id,
+          name: user.name,
+          email: user.email,
           role: roleSlug,
         },
       };
