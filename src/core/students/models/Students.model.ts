@@ -1,7 +1,7 @@
 import { Model, DataTypes, Optional } from 'sequelize';
 import coreDB from '../../../config/database.core';
 
-interface EmployeeAttributes {
+interface UserAttributes {
   id: number;
   // ── Auth ───────────────────────────────────────
   email: string;
@@ -21,13 +21,15 @@ interface EmployeeAttributes {
   state?: string;
   city?: string;
   address?: string;
+  // ── Extras ─────────────────────────────────────
+  notes?: string;
   // ── Timestamps ─────────────────────────────────
   createdAt?: Date;
   updatedAt?: Date;
 }
 
-interface EmployeeCreationAttributes extends Optional<
-  EmployeeAttributes,
+interface UserCreationAttributes extends Optional<
+  UserAttributes,
   | 'id'
   | 'active'
   | 'emailVerified'
@@ -40,9 +42,10 @@ interface EmployeeCreationAttributes extends Optional<
   | 'state'
   | 'city'
   | 'address'
+  | 'notes'
 > {}
 
-class Employee extends Model<EmployeeAttributes, EmployeeCreationAttributes> implements EmployeeAttributes {
+class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
   public id!: number;
   public email!: string;
   public password!: string;
@@ -58,12 +61,13 @@ class Employee extends Model<EmployeeAttributes, EmployeeCreationAttributes> imp
   public state!: string;
   public city!: string;
   public address!: string;
+  public notes!: string;
 
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
 
-Employee.init(
+User.init(
   {
     id: {
       type: DataTypes.INTEGER.UNSIGNED,
@@ -139,6 +143,12 @@ Employee.init(
       allowNull: true,
       comment: 'Rua, número, complemento',
     },
+    // ── Extras ────────────────────────────────────
+    notes: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: 'Campo livre em JSON para integrações externas (ex: wellhub_id)',
+    },
   },
   {
     sequelize: coreDB,
@@ -151,4 +161,4 @@ Employee.init(
   }
 );
 
-export default Employee;
+export default User;

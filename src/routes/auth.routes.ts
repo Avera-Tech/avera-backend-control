@@ -27,17 +27,17 @@ router.post('/verify-otp', PasswordController.verifyOtp);
 /** POST /api/auth/resend-otp */
 router.post('/resend-otp', PasswordController.resendOtp);
 
-// ─── Reset de senha ───────────────────────────────────────────────────────────
+// ─── Reset de senha via link ──────────────────────────────────────────────────
 
-/** POST /api/auth/request-reset */
+/** POST /api/auth/request-reset → envia email com link */
 router.post('/request-reset', PasswordController.requestReset);
 
-/** POST /api/auth/reset-password */
+/** POST /api/auth/reset-password → recebe token do link + nova senha */
 router.post('/reset-password', PasswordController.resetPassword);
 
 // ─── Troca de senha autenticada ───────────────────────────────────────────────
 
-/** POST /api/auth/change-password */
+/** POST /api/auth/change-password 🔒 */
 router.post('/change-password', authenticateToken, PasswordController.changePassword);
 
 export default router;

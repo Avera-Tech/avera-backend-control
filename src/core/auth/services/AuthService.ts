@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import User from '../../users/models/User.model';
 import Role from '../../rbac/models/Role.model';
 import UserRole from '../../rbac/models/UserRole.model';
+import { OtpService } from './OtpService';
 
 export interface JWTPayload {
   userId: number;
@@ -20,6 +21,7 @@ export interface LoginResponse {
     email: string;
   };
   error?: string;
+  requiresVerification?: boolean;
 }
 
 export class AuthService {
@@ -47,6 +49,16 @@ export class AuthService {
 
       if (!user) {
         return { success: false, error: 'Email ou senha incorretos' };
+      }
+
+      if (!user.emailVerified) {
+        // Reenvia OTP caso a conta ainda não foi verificada
+        await OtpService.sendOtp(user.id, user.email, 'signup');
+        return {
+          success: false,
+          error: 'Conta pendente de verificação. Enviamos um novo código para o seu email.',
+          requiresVerification: true,
+        };
       }
 
       if (!user.active) {
@@ -108,7 +120,7 @@ export class AuthService {
         name,
         email: normalizedEmail,
         password: hashedPassword,
-        active: true,
+        active: false,        // inativo até verificar o email
         emailVerified: false,
       });
 
@@ -116,6 +128,9 @@ export class AuthService {
         userId: user.id,
         roleId: role.id,
       });
+
+      // Envia OTP de verificação por email
+      await OtpService.sendOtp(user.id, user.email, 'signup');
 
       return {
         success: true,

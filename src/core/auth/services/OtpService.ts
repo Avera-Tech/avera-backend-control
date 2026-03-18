@@ -82,16 +82,23 @@ export class OtpService {
 
 // ─── Template de email ───────────────────────────────────────────────────────
 
+const brandColor = '#2b5aad';
+const accentColor = '#e9a319';
+const bgColor = '#f4f5f7';
+const cardBg = '#ffffff';
+const textColor = '#1c2a4a';
+const mutedText = '#6b7a94';
+
 function buildEmailHtml(code: string, purpose: 'signup' | 'reset_password'): string {
   const title =
     purpose === 'signup'
-      ? 'Verificação de conta'
+      ? 'Verifique sua conta'
       : 'Redefinição de senha';
 
   const description =
     purpose === 'signup'
-      ? 'Use o código abaixo para verificar sua conta. Ele é válido por 10 minutos.'
-      : 'Use o código abaixo para redefinir sua senha. Ele é válido por 10 minutos.';
+      ? 'Use o código abaixo para verificar sua conta no TennisUP. O código expira em 10 minutos.'
+      : 'Use o código abaixo para redefinir sua senha. O código expira em 10 minutos.';
 
   return `
 <!DOCTYPE html>
@@ -101,21 +108,35 @@ function buildEmailHtml(code: string, purpose: 'signup' | 'reset_password'): str
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${title}</title>
 </head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; margin: 0; padding: 20px;">
-  <div style="max-width: 500px; margin: 0 auto; background: white; border-radius: 12px; padding: 40px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-    <h1 style="color: #1a1a1a; font-size: 24px; margin-bottom: 8px;">${title}</h1>
-    <p style="color: #666; font-size: 15px; margin-bottom: 32px;">${description}</p>
-
-    <div style="background: #f8f9fa; border: 2px solid #3b82f6; border-radius: 8px; padding: 24px; text-align: center; margin-bottom: 32px;">
-      <span style="font-size: 40px; font-weight: 700; letter-spacing: 12px; color: #1a1a1a;">${code}</span>
+<body style="font-family: 'Inter', sans-serif; background-color: ${bgColor}; margin: 0; padding: 40px 0;">
+  <div style="max-width: 480px; margin: 0 auto; background-color: ${cardBg}; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.06);">
+    <!-- Header -->
+    <div style="background-color: ${brandColor}; padding: 32px 32px 24px; text-align: center;">
+      <h1 style="margin: 0; font-size: 28px; font-weight: 800; color: #fff; letter-spacing: -0.5px;">
+        Tennis<span style="color: ${accentColor};">UP</span>
+      </h1>
     </div>
-
-    <p style="color: #999; font-size: 13px;">Se você não solicitou isso, ignore este e-mail.</p>
-
-    <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
-    <p style="color: #bbb; font-size: 11px; text-align: center;">
-      Desenvolvido por <strong>Avera</strong>
-    </p>
+    <!-- Body -->
+    <div style="padding: 32px;">
+      <h2 style="margin: 0 0 8px; font-size: 22px; font-weight: 700; color: ${textColor};">${title}</h2>
+      <p style="margin: 0 0 24px; font-size: 15px; color: ${mutedText}; line-height: 1.6;">
+        ${description}
+      </p>
+      <div style="background-color: ${bgColor}; border-radius: 10px; padding: 20px; text-align: center; margin: 0 0 24px;">
+        <span style="font-size: 36px; font-weight: 800; letter-spacing: 8px; color: ${brandColor}; font-family: 'JetBrains Mono', monospace;">
+          ${code}
+        </span>
+      </div>
+      <p style="margin: 0 0 8px; font-size: 13px; color: ${mutedText}; line-height: 1.5;">
+        Se você não solicitou este código, ignore este email.
+      </p>
+    </div>
+    <!-- Footer -->
+    <div style="border-top: 1px solid #e8eaed; padding: 20px 32px; text-align: center;">
+      <p style="margin: 0; font-size: 12px; color: #a0aab8;">
+        © 2025 TennisUP · Desenvolvido por <strong style="color: ${mutedText};">Avera</strong>
+      </p>
+    </div>
   </div>
 </body>
 </html>
