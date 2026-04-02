@@ -1,34 +1,42 @@
 import { Router, Request, Response } from 'express';
+import bcrypt from 'bcryptjs';
 import Role from '../core/rbac/models/Role.model';
 import Permission from '../core/rbac/models/Permission.model';
 import RolePermission from '../core/rbac/models/RolePermission.model';
+import User from '../core/users/models/User.model';
+import UserRole from '../core/rbac/models/UserRole.model';
 
 const router = Router();
 
-/**
- * POST /api/seed
- * Popula os dados iniciais do sistema (roles e permissions)
- * ⚠️  Usar apenas na primeira instalação
- */
-router.post('/', async (req: Request, res: Response) => {
+// ─────────────────────────────────────────────────────────────────────────────
+// Guard helper
+// ─────────────────────────────────────────────────────────────────────────────
+function guardSeedKey(req: Request, res: Response): boolean {
   const seedKey = req.headers['x-seed-key'];
-
   if (seedKey !== process.env.SYNC_SECRET_KEY) {
-    return res.status(401).json({
-      success: false,
-      error: 'Chave inválida',
-    });
+    res.status(401).json({ success: false, error: 'Chave inválida' });
+    return false;
   }
+  return true;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/seed
+// Popula roles e permissões do sistema (CT - Avera)
+// ⚠️  Usar apenas na primeira instalação
+// Header: x-seed-key: <SYNC_SECRET_KEY>
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/', async (req: Request, res: Response) => {
+  if (!guardSeedKey(req, res)) return;
 
   const results: Record<string, string> = {};
 
   try {
-    // ── 1. Roles ────────────────────────────────────────────────────────────
+    // ── 1. Roles ─────────────────────────────────────────────────────────────
     const rolesData = [
-      { name: 'Administrador', slug: 'admin',   description: 'Acesso total ao sistema',    active: true },
-      { name: 'Gerente',       slug: 'manager', description: 'Acesso de gerenciamento',    active: true },
-      { name: 'Usuário',       slug: 'user',    description: 'Acesso básico',              active: true },
-      { name: 'Visitante',     slug: 'guest',   description: 'Apenas leitura',             active: true },
+      { name: 'Administrador', slug: 'admin',    description: 'Acesso total ao sistema da Avera CT',               active: true },
+      { name: 'Empregado',     slug: 'employee', description: 'Acesso administrativo: alunos, turmas, financeiro', active: true },
+      { name: 'Professor',     slug: 'teacher',  description: 'Acesso às aulas e fichas dos alunos',               active: true },
     ];
 
     for (const role of rolesData) {
@@ -37,25 +45,34 @@ router.post('/', async (req: Request, res: Response) => {
 
     results['roles'] = `✅ ${rolesData.length} roles inseridas`;
 
-    // ── 2. Permissions ──────────────────────────────────────────────────────
+    // ── 2. Permissions ────────────────────────────────────────────────────────
     const permissionsData = [
       // Usuários
-      { name: 'Listar usuários',    slug: 'users:list',    resource: 'users',    action: 'list',    active: true },
-      { name: 'Ver usuário',        slug: 'users:read',    resource: 'users',    action: 'read',    active: true },
-      { name: 'Criar usuário',      slug: 'users:create',  resource: 'users',    action: 'create',  active: true },
-      { name: 'Editar usuário',     slug: 'users:update',  resource: 'users',    action: 'update',  active: true },
-      { name: 'Deletar usuário',    slug: 'users:delete',  resource: 'users',    action: 'delete',  active: true },
+      { name: 'Listar usuários',      slug: 'users:list',         resource: 'users',      action: 'list',    active: true },
+      { name: 'Ver usuário',          slug: 'users:read',         resource: 'users',      action: 'read',    active: true },
+      { name: 'Criar usuário',        slug: 'users:create',       resource: 'users',      action: 'create',  active: true },
+      { name: 'Editar usuário',       slug: 'users:update',       resource: 'users',      action: 'update',  active: true },
+      { name: 'Deletar usuário',      slug: 'users:delete',       resource: 'users',      action: 'delete',  active: true },
       // Alunos
-      { name: 'Listar alunos',      slug: 'students:list',   resource: 'students', action: 'list',   active: true },
-      { name: 'Ver aluno',          slug: 'students:read',   resource: 'students', action: 'read',   active: true },
-      { name: 'Criar aluno',        slug: 'students:create', resource: 'students', action: 'create', active: true },
-      { name: 'Editar aluno',       slug: 'students:update', resource: 'students', action: 'update', active: true },
-      { name: 'Deletar aluno',      slug: 'students:delete', resource: 'students', action: 'delete', active: true },
+      { name: 'Listar alunos',        slug: 'students:list',      resource: 'students',   action: 'list',    active: true },
+      { name: 'Ver aluno',            slug: 'students:read',      resource: 'students',   action: 'read',    active: true },
+      { name: 'Criar aluno',          slug: 'students:create',    resource: 'students',   action: 'create',  active: true },
+      { name: 'Editar aluno',         slug: 'students:update',    resource: 'students',   action: 'update',  active: true },
+      { name: 'Deletar aluno',        slug: 'students:delete',    resource: 'students',   action: 'delete',  active: true },
+      // Aulas
+      { name: 'Listar aulas',         slug: 'classes:list',       resource: 'classes',    action: 'list',    active: true },
+      { name: 'Ver aula',             slug: 'classes:read',       resource: 'classes',    action: 'read',    active: true },
+      { name: 'Criar aula',           slug: 'classes:create',     resource: 'classes',    action: 'create',  active: true },
+      { name: 'Editar aula',          slug: 'classes:update',     resource: 'classes',    action: 'update',  active: true },
+      { name: 'Deletar aula',         slug: 'classes:delete',     resource: 'classes',    action: 'delete',  active: true },
+      // Financeiro
+      { name: 'Ver financeiro',       slug: 'financial:read',     resource: 'financial',  action: 'read',    active: true },
+      { name: 'Gerenciar financeiro', slug: 'financial:manage',   resource: 'financial',  action: 'manage',  active: true },
       // Relatórios
-      { name: 'Ver relatórios',     slug: 'reports:read',   resource: 'reports',  action: 'read',   active: true },
-      { name: 'Exportar relatórios',slug: 'reports:export', resource: 'reports',  action: 'export', active: true },
+      { name: 'Ver relatórios',       slug: 'reports:read',       resource: 'reports',    action: 'read',    active: true },
+      { name: 'Exportar relatórios',  slug: 'reports:export',     resource: 'reports',    action: 'export',  active: true },
       // Dashboard
-      { name: 'Ver dashboard',      slug: 'dashboard:read', resource: 'dashboard',action: 'read',   active: true },
+      { name: 'Ver dashboard',        slug: 'dashboard:read',     resource: 'dashboard',  action: 'read',    active: true },
     ];
 
     for (const perm of permissionsData) {
@@ -64,11 +81,10 @@ router.post('/', async (req: Request, res: Response) => {
 
     results['permissions'] = `✅ ${permissionsData.length} permissões inseridas`;
 
-    // ── 3. Role-Permissions ─────────────────────────────────────────────────
+    // ── 3. Role-Permissions ───────────────────────────────────────────────────
     const adminRole    = await Role.findOne({ where: { slug: 'admin' } });
-    const managerRole  = await Role.findOne({ where: { slug: 'manager' } });
-    const userRole     = await Role.findOne({ where: { slug: 'user' } });
-    const guestRole    = await Role.findOne({ where: { slug: 'guest' } });
+    const employeeRole = await Role.findOne({ where: { slug: 'employee' } });
+    const teacherRole  = await Role.findOne({ where: { slug: 'teacher' } });
     const allPerms     = await Permission.findAll();
 
     const permMap = Object.fromEntries(allPerms.map((p) => [p.slug, p.id]));
@@ -84,50 +100,46 @@ router.post('/', async (req: Request, res: Response) => {
       results['role_permissions:admin'] = `✅ todas as permissões atribuídas ao admin`;
     }
 
-    // Manager → tudo exceto deletar
-    if (managerRole) {
-      const managerSlugs = [
-        'users:list', 'users:read', 'users:create', 'users:update',
-        'students:list', 'students:read', 'students:create', 'students:update',
-        'reports:read', 'reports:export', 'dashboard:read',
+    // Employee → tudo exceto gerenciar usuários
+    if (employeeRole) {
+      const employeeSlugs = [
+        'users:list', 'users:read',
+        'students:list', 'students:read', 'students:create', 'students:update', 'students:delete',
+        'classes:list', 'classes:read', 'classes:create', 'classes:update', 'classes:delete',
+        'financial:read', 'financial:manage',
+        'reports:read', 'reports:export',
+        'dashboard:read',
       ];
-      for (const slug of managerSlugs) {
+      for (const slug of employeeSlugs) {
         if (permMap[slug]) {
           await RolePermission.findOrCreate({
-            where: { roleId: managerRole.id, permissionId: permMap[slug] },
-            defaults: { roleId: managerRole.id, permissionId: permMap[slug] },
+            where: { roleId: employeeRole.id, permissionId: permMap[slug] },
+            defaults: { roleId: employeeRole.id, permissionId: permMap[slug] },
           });
         }
       }
-      results['role_permissions:manager'] = `✅ permissões atribuídas ao manager`;
+      results['role_permissions:employee'] = `✅ permissões atribuídas ao employee`;
     }
 
-    // User → leitura básica
-    if (userRole) {
-      const userSlugs = ['students:list', 'students:read', 'dashboard:read'];
-      for (const slug of userSlugs) {
+    // Teacher → aulas e leitura de alunos
+    if (teacherRole) {
+      const teacherSlugs = [
+        'students:list', 'students:read',
+        'classes:list', 'classes:read', 'classes:create', 'classes:update',
+        'dashboard:read',
+      ];
+      for (const slug of teacherSlugs) {
         if (permMap[slug]) {
           await RolePermission.findOrCreate({
-            where: { roleId: userRole.id, permissionId: permMap[slug] },
-            defaults: { roleId: userRole.id, permissionId: permMap[slug] },
+            where: { roleId: teacherRole.id, permissionId: permMap[slug] },
+            defaults: { roleId: teacherRole.id, permissionId: permMap[slug] },
           });
         }
       }
-      results['role_permissions:user'] = `✅ permissões atribuídas ao user`;
+      results['role_permissions:teacher'] = `✅ permissões atribuídas ao teacher`;
     }
 
-    // Guest → só dashboard
-    if (guestRole) {
-      if (permMap['dashboard:read']) {
-        await RolePermission.findOrCreate({
-          where: { roleId: guestRole.id, permissionId: permMap['dashboard:read'] },
-          defaults: { roleId: guestRole.id, permissionId: permMap['dashboard:read'] },
-        });
-      }
-      results['role_permissions:guest'] = `✅ permissões atribuídas ao guest`;
-    }
-
-    return res.status(200).json({
+    return res.status(201).json({
       success: true,
       message: 'Seed concluído com sucesso',
       results,
@@ -138,6 +150,68 @@ router.post('/', async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       error: 'Erro ao executar seed',
+      message: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/seed/admin
+// Cria o usuário administrador inicial
+// ⚠️  Execute após POST /api/seed
+// Header: x-seed-key: <SYNC_SECRET_KEY>
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/admin', async (req: Request, res: Response) => {
+  if (!guardSeedKey(req, res)) return;
+
+  try {
+    const adminEmail    = process.env.ADMIN_EMAIL    || 'admin@averact.com';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@2025';
+    const adminName     = process.env.ADMIN_NAME     || 'Administrador Avera';
+
+    // Verificar se já existe
+    const existing = await User.findOne({ where: { email: adminEmail } });
+    if (existing) {
+      return res.status(200).json({
+        success: true,
+        message: `Admin '${adminEmail}' já existe`,
+      });
+    }
+
+    // Buscar role admin (depende do seed principal ter rodado)
+    const adminRole = await Role.findOne({ where: { slug: 'admin' } });
+    if (!adminRole) {
+      return res.status(400).json({
+        success: false,
+        error: 'Role admin não encontrada. Execute POST /api/seed primeiro.',
+      });
+    }
+
+    // Criar usuário
+    const hashed = await bcrypt.hash(adminPassword, 12);
+    const user = await User.create({
+      name: adminName,
+      email: adminEmail,
+      password: hashed,
+      active: true,
+      emailVerified: true,
+    });
+
+    // Atribuir role admin
+    await UserRole.create({ userId: user.id, roleId: adminRole.id });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Admin criado com sucesso',
+      user: { id: user.id, name: user.name, email: user.email },
+      note: '⚠️ Altere a senha após o primeiro acesso',
+    });
+
+  } catch (error: any) {
+    console.error('Erro ao criar admin:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Erro ao criar admin',
       message: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
