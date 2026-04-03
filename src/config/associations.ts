@@ -3,6 +3,8 @@ import Role from '../core/rbac/models/Role.model';
 import Permission from '../core/rbac/models/Permission.model';
 import UserRole from '../core/rbac/models/UserRole.model';
 import RolePermission from '../core/rbac/models/RolePermission.model';
+import Product from '../core/products/models/Product.model';
+import ProductType from '../core/products/models/ProductType.model';
 
 export const setupAssociations = (): void => {
   // User <-> Role (Many-to-Many via UserRole)
@@ -40,6 +42,9 @@ export const setupAssociations = (): void => {
 
   RolePermission.belongsTo(Role, { foreignKey: 'roleId', as: 'role' });
   RolePermission.belongsTo(Permission, { foreignKey: 'permissionId', as: 'permission' });
+
+  ProductType.hasMany(Product, { foreignKey: 'productTypeId', as: 'products' });
+  Product.belongsTo(ProductType, { foreignKey: 'productTypeId', as: 'productType' });
 
   console.log('✅ Associações configuradas');
 };

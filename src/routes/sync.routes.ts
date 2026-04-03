@@ -6,6 +6,8 @@ import Role from '../core/rbac/models/Role.model';
 import Permission from '../core/rbac/models/Permission.model';
 import UserRole from '../core/rbac/models/UserRole.model';
 import RolePermission from '../core/rbac/models/RolePermission.model';
+import ProductType from '../core/products/models/ProductType.model';
+import Product from '../core/products/models/Product.model';
 
 const router = Router();
 
@@ -27,13 +29,15 @@ router.post('/', async (req: Request, res: Response) => {
   const results: Record<string, string> = {};
 
   const models = [
-    { name: 'users',        model: User },
-    { name: 'students',         model: Student },
-    { name: 'otp_codes',        model: OtpCode },
-    { name: 'roles',            model: Role },
-    { name: 'permissions',      model: Permission },
-    { name: 'user_roles',       model: UserRole },
+    { name: 'users', model: User },
+    { name: 'students', model: Student },
+    { name: 'otp_codes', model: OtpCode },
+    { name: 'roles', model: Role },
+    { name: 'permissions', model: Permission },
+    { name: 'user_roles', model: UserRole },
     { name: 'role_permissions', model: RolePermission },
+    { name: 'product_types', model: ProductType },
+    { name: 'products', model: Product },
   ];
 
   for (const { name, model } of models) {

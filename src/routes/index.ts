@@ -2,13 +2,12 @@ import { Router } from 'express';
 import authRoutes from './auth.routes';
 import syncRoutes from './sync.routes';
 import seedRoutes from './seed.routes';
+import productTypeRoutes from './productType.routes';
+import productRoutes from './product.routes';
 
 const router = Router();
 
-/**
- * Health check
- */
-router.get('/health', (req, res) => {
+router.get('/health', (_req, res) => {
   res.status(200).json({
     success: true,
     message: 'API funcionando corretamente',
@@ -16,19 +15,10 @@ router.get('/health', (req, res) => {
   });
 });
 
-/**
- * Autenticação
- */
 router.use('/auth', authRoutes);
-
-/**
- * Sincronização de models com o banco
- */
 router.use('/sync', syncRoutes);
-
-/**
- * Seed de dados iniciais (roles, permissions)
- */
 router.use('/seed', seedRoutes);
+router.use('/product-types', productTypeRoutes);
+router.use('/products', productRoutes);
 
 export default router;
