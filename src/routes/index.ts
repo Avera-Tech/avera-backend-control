@@ -4,6 +4,7 @@ import syncRoutes from './sync.routes';
 import seedRoutes from './seed.routes';
 import productTypeRoutes from './productType.routes';
 import productRoutes from './product.routes';
+import studentRoutes from './student.routes';
 
 const router = Router();
 
@@ -20,5 +21,6 @@ router.use('/sync', syncRoutes);
 router.use('/seed', seedRoutes);
 router.use('/product-types', productTypeRoutes);
 router.use('/products', productRoutes);
+router.use('/students', studentRoutes);
 
 export default router;
