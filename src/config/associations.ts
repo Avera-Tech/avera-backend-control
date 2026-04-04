@@ -3,6 +3,10 @@ import Role from '../core/rbac/models/Role.model';
 import Permission from '../core/rbac/models/Permission.model';
 import UserRole from '../core/rbac/models/UserRole.model';
 import RolePermission from '../core/rbac/models/RolePermission.model';
+import Product from '../core/products/models/Product.model';
+import ProductType from '../core/products/models/ProductType.model';
+import StudentCredit from '../core/credits/models/StudentCredit.model';
+import CreditTransaction from '../core/credits/models/CreditTransaction.model';
 
 export const setupAssociations = (): void => {
   // User <-> Role (Many-to-Many via UserRole)
@@ -40,6 +44,12 @@ export const setupAssociations = (): void => {
 
   RolePermission.belongsTo(Role, { foreignKey: 'roleId', as: 'role' });
   RolePermission.belongsTo(Permission, { foreignKey: 'permissionId', as: 'permission' });
+
+  ProductType.hasMany(Product, { foreignKey: 'productTypeId', as: 'products' });
+  Product.belongsTo(ProductType, { foreignKey: 'productTypeId', as: 'productType' });
+  StudentCredit.belongsTo(Product, { foreignKey: 'productId', as: 'product' });
+  StudentCredit.hasMany(CreditTransaction, { foreignKey: 'studentCreditId', as: 'transactions' });
+  CreditTransaction.belongsTo(StudentCredit, { foreignKey: 'studentCreditId', as: 'credit' });
 
   console.log('✅ Associações configuradas');
 };
