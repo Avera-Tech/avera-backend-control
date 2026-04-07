@@ -107,6 +107,13 @@ INSERT INTO permissions (name, slug, resource, action, description, active) VALU
 ('Deletar Usuário', 'users:delete', 'users', 'delete', 'Deletar usuários', TRUE),
 ('Listar Usuários', 'users:list', 'users', 'list', 'Listar todos os usuários', TRUE),
 
+-- Staff
+('Listar staff', 'staff:list', 'staff', 'list', 'Listar perfis de funcionários', TRUE),
+('Visualizar staff', 'staff:read', 'staff', 'read', 'Ver dados de funcionário', TRUE),
+('Criar staff', 'staff:create', 'staff', 'create', 'Cadastrar funcionário', TRUE),
+('Editar staff', 'staff:update', 'staff', 'update', 'Atualizar funcionário', TRUE),
+('Deletar staff', 'staff:delete', 'staff', 'delete', 'Remover perfil de funcionário', TRUE),
+
 -- Relatórios
 ('Visualizar Relatório', 'reports:read', 'reports', 'read', 'Visualizar relatórios', TRUE),
 ('Criar Relatório', 'reports:create', 'reports', 'create', 'Criar relatórios', TRUE),
@@ -130,6 +137,7 @@ SELECT 1, id FROM permissions WHERE active = TRUE;
 INSERT INTO role_permissions (roleId, permissionId)
 SELECT 2, id FROM permissions WHERE slug IN (
     'users:read', 'users:list', 'users:update',
+    'staff:list', 'staff:read', 'staff:create', 'staff:update',
     'reports:read', 'reports:create', 'reports:export',
     'dashboard:view'
 );
@@ -138,6 +146,7 @@ SELECT 2, id FROM permissions WHERE slug IN (
 INSERT INTO role_permissions (roleId, permissionId)
 SELECT 3, id FROM permissions WHERE slug IN (
     'users:read',
+    'staff:list', 'staff:read',
     'reports:read',
     'dashboard:view'
 );
