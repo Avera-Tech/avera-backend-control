@@ -1,3 +1,5 @@
+// src/core/students/models/Students.model.ts
+
 import { Model, DataTypes, Optional } from 'sequelize';
 import coreDB from '../../../config/database.core';
 
@@ -45,7 +47,7 @@ interface UserCreationAttributes extends Optional<
   | 'notes'
 > {}
 
-class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
+class Student extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
   public id!: number;
   public email!: string;
   public password!: string;
@@ -67,7 +69,7 @@ class User extends Model<UserAttributes, UserCreationAttributes> implements User
   public readonly updatedAt!: Date;
 }
 
-User.init(
+Student.init(
   {
     id: {
       type: DataTypes.INTEGER.UNSIGNED,
@@ -152,7 +154,7 @@ User.init(
   },
   {
     sequelize: coreDB,
-    tableName: 'users',
+    tableName: 'students',
     timestamps: true,
     underscored: false,
     indexes: [
@@ -161,4 +163,4 @@ User.init(
   }
 );
 
-export default User;
+export default Student;
