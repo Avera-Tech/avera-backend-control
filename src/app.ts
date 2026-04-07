@@ -110,6 +110,14 @@ app.get('/', (req: Request, res: Response) => {
         update: 'PATCH /api/products/:id',
       },
 
+      staff: {
+        list: 'GET /api/staff',
+        getById: 'GET /api/staff/:id',
+        create: 'POST /api/staff',
+        update: 'PATCH /api/staff/:id',
+        remove: 'DELETE /api/staff/:id',
+      },
+
       system: {
         sync: 'POST /api/sync',
         seed: 'POST /api/seed',
