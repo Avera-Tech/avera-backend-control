@@ -59,27 +59,63 @@ app.get('/', (req: Request, res: Response) => {
     message: 'Backend Node.js - Multi-Database (Master + Core) com RBAC',
     version: '1.0.0',
     endpoints: {
-      health: '/api/health',
+      health: 'GET /api/health',
+
       auth: {
         login: 'POST /api/auth/login',
         register: 'POST /api/auth/register',
         refresh: 'POST /api/auth/refresh',
         me: 'GET /api/auth/me',
+        verifyOtp: 'POST /api/auth/verify-otp',
+        resendOtp: 'POST /api/auth/resend-otp',
+        requestReset: 'POST /api/auth/request-reset',
+        resetPassword: 'POST /api/auth/reset-password',
+        changePassword: 'POST /api/auth/change-password',
       },
-      staff: {
-        list: 'GET /api/staff',
-        create: 'POST /api/staff',
-        update: 'PATCH /api/staff/:id',
-        delete: 'DELETE /api/staff/:id',
+
+      users: {
+        list: 'GET /api/users',
+        getById: 'GET /api/users/:id',
+        create: 'POST /api/users',
+        update: 'PUT /api/users/:id',
+        remove: 'DELETE /api/users/:id',
+        activate: 'PATCH /api/users/:id/activate',
+        changePassword: 'PATCH /api/users/me/password',
+        resetPassword: 'PATCH /api/users/:id/reset-password',
       },
+
       students: {
         list: 'GET /api/students',
+        getById: 'GET /api/students/:id',
         create: 'POST /api/students',
         update: 'PATCH /api/students/:id',
-        delete: 'DELETE /api/students/:id',
-      }
-    },
-  });
+        remove: 'DELETE /api/students/:id',
+      },
+
+      credits: {
+        assign: 'POST /api/students/:id/credits',
+        list: 'GET  /api/students/:id/credits',
+        consume: 'POST /api/students/:id/credits/consume',
+      },
+
+      productTypes: {
+        list: 'GET /api/product-types',
+        create: 'POST /api/product-types',
+        update: 'PATCH /api/product-types/:id',
+      },
+
+      products: {
+        list: 'GET /api/products',
+        create: 'POST /api/products',
+        update: 'PATCH /api/products/:id',
+      },
+
+      system: {
+        sync: 'POST /api/sync',
+        seed: 'POST /api/seed',
+        seedAdmin: 'POST /api/seed/admin',
+      },
+    }});
 });
 
 /**
