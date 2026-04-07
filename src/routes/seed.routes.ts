@@ -53,6 +53,12 @@ router.post('/', async (req: Request, res: Response) => {
       { name: 'Criar usuário', slug: 'users:create', resource: 'users', action: 'create', active: true },
       { name: 'Editar usuário', slug: 'users:update', resource: 'users', action: 'update', active: true },
       { name: 'Deletar usuário', slug: 'users:delete', resource: 'users', action: 'delete', active: true },
+      // Staff
+      { name: 'Listar staff', slug: 'staff:list', resource: 'staff', action: 'list', active: true },
+      { name: 'Ver staff', slug: 'staff:read', resource: 'staff', action: 'read', active: true },
+      { name: 'Criar staff', slug: 'staff:create', resource: 'staff', action: 'create', active: true },
+      { name: 'Editar staff', slug: 'staff:update', resource: 'staff', action: 'update', active: true },
+      { name: 'Deletar staff', slug: 'staff:delete', resource: 'staff', action: 'delete', active: true },
       // Alunos
       { name: 'Listar alunos', slug: 'students:list', resource: 'students', action: 'list', active: true },
       { name: 'Ver aluno', slug: 'students:read', resource: 'students', action: 'read', active: true },
@@ -108,6 +114,7 @@ router.post('/', async (req: Request, res: Response) => {
     if (employeeRole) {
       const employeeSlugs = [
         'users:list', 'users:read',
+        'staff:list', 'staff:read', 'staff:create', 'staff:update', 'staff:delete',
         'students:list', 'students:read', 'students:create', 'students:update', 'students:delete',
         'classes:list', 'classes:read', 'classes:create', 'classes:update', 'classes:delete',
         'financial:read', 'financial:manage',
@@ -128,6 +135,7 @@ router.post('/', async (req: Request, res: Response) => {
     // Teacher → aulas e leitura de alunos
     if (teacherRole) {
       const teacherSlugs = [
+        'staff:list', 'staff:read',
         'students:list', 'students:read',
         'classes:list', 'classes:read', 'classes:create', 'classes:update',
         'dashboard:read',

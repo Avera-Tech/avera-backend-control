@@ -1,4 +1,5 @@
 import User from '../core/users/models/User.model';
+import Staff from '../core/staff/models/Staff.model';
 import Role from '../core/rbac/models/Role.model';
 import Permission from '../core/rbac/models/Permission.model';
 import UserRole from '../core/rbac/models/UserRole.model';
@@ -26,6 +27,9 @@ export const setupAssociations = (): void => {
 
   UserRole.belongsTo(User, { foreignKey: 'userId', as: 'user' });
   UserRole.belongsTo(Role, { foreignKey: 'roleId', as: 'role' });
+
+  Staff.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+  User.hasOne(Staff, { foreignKey: 'userId', as: 'staffProfile' });
 
   // Role <-> Permission (Many-to-Many via RolePermission)
   Role.belongsToMany(Permission, {

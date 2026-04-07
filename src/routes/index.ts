@@ -5,6 +5,7 @@ import seedRoutes from './seed.routes';
 import productTypeRoutes from './productType.routes';
 import productRoutes from './product.routes';
 import studentRoutes from './student.routes';
+import staffRoutes from './staff.routes';
 
 const router = Router();
 
@@ -22,5 +23,6 @@ router.use('/seed', seedRoutes);
 router.use('/product-types', productTypeRoutes);
 router.use('/products', productRoutes);
 router.use('/students', studentRoutes);
+router.use('/staff', staffRoutes);
 
 export default router;
