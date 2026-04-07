@@ -98,7 +98,7 @@ export class AuthService {
     name: string,
     email: string,
     password: string,
-    roleSlug: string = 'user'
+    roleSlug: string = 'admin'
   ): Promise<{ success: boolean; user?: any; error?: string }> {
     try {
       const normalizedEmail = email.trim().toLowerCase();
