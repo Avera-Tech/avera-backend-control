@@ -66,6 +66,18 @@ app.get('/', (req: Request, res: Response) => {
         refresh: 'POST /api/auth/refresh',
         me: 'GET /api/auth/me',
       },
+      staff: {
+        list: 'GET /api/staff',
+        create: 'POST /api/staff',
+        update: 'PATCH /api/staff/:id',
+        delete: 'DELETE /api/staff/:id',
+      },
+      students: {
+        list: 'GET /api/students',
+        create: 'POST /api/students',
+        update: 'PATCH /api/students/:id',
+        delete: 'DELETE /api/students/:id',
+      }
     },
   });
 });
