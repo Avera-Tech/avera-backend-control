@@ -5,6 +5,9 @@ import { ProductController } from '../core/products/controllers/ProductControlle
 
 const router = Router();
 
+/**
+ * GET /products
+ */
 router.get(
   '/',
   authenticateToken,
@@ -12,6 +15,29 @@ router.get(
   ProductController.list,
 );
 
+/**
+ * GET /products/:id
+ */
+router.get(
+  '/:id',
+  authenticateToken,
+  checkPermissions(['products:read']),
+  ProductController.getById,
+);
+
+/**
+ * POST /products
+ * Body: {
+ *   productTypeId: number;
+ *   name: string;
+ *   description: string;
+ *   credits: number;
+ *   price: number;
+ *   validityDays: number;
+ *   recurring: boolean;
+ *   recurringInterval: string;
+ * }
+ */
 router.post(
   '/',
   authenticateToken,
@@ -19,6 +45,10 @@ router.post(
   ProductController.create,
 );
 
+/**
+ * PATCH /products/:id
+ * Atualiza pacote — product_type_id não pode ser alterado
+ */
 router.patch(
   '/:id',
   authenticateToken,

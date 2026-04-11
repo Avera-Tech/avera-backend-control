@@ -106,6 +106,7 @@ app.get('/', (req: Request, res: Response) => {
 
       products: {
         list: 'GET /api/products',
+        getById: 'GET /api/products/:id',
         create: 'POST /api/products',
         update: 'PATCH /api/products/:id',
       },

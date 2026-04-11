@@ -8,6 +8,10 @@ const router = Router();
 
 // ─── CRUD de alunos ───────────────────────────────────────────────────────────
 
+/**
+ * GET /students
+ * Query: ?active=true|false &search=texto
+ */
 router.get(
   '/',
   authenticateToken,
@@ -15,6 +19,9 @@ router.get(
   StudentController.list,
 );
 
+/**
+ * GET /students/:id
+ */
 router.get(
   '/:id',
   authenticateToken,
@@ -22,6 +29,10 @@ router.get(
   StudentController.getById,
 );
 
+/**
+ * POST /students
+ * Body: { name, email, password, phone, cpf, birthday, zipCode, state, city, address, notes, active }
+ */
 router.post(
   '/',
   authenticateToken,
@@ -29,6 +40,10 @@ router.post(
   StudentController.create,
 );
 
+/**
+ * PATCH /students/:id
+ * Body: { name, email, password, phone, cpf, birthday, zipCode, state, city, address, notes, active }
+ */
 router.patch(
   '/:id',
   authenticateToken,
@@ -36,6 +51,9 @@ router.patch(
   StudentController.update,
 );
 
+/**
+ * DELETE /students/:id
+ */
 router.delete(
   '/:id',
   authenticateToken,
