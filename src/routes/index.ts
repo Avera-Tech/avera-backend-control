@@ -4,8 +4,8 @@ import syncRoutes from './sync.routes';
 import seedRoutes from './seed.routes';
 import productTypeRoutes from './productType.routes';
 import productRoutes from './product.routes';
-import studentRoutes from './student.routes';
-import staffRoutes from './staff.routes';
+import staffRoutes from '../modules/staff/routes/staff.routes';
+import userRoutes from '../modules/user/routes/user.routes';
 
 const router = Router();
 
@@ -22,7 +22,7 @@ router.use('/sync', syncRoutes);
 router.use('/seed', seedRoutes);
 router.use('/product-types', productTypeRoutes);
 router.use('/products', productRoutes);
-router.use('/students', studentRoutes);
 router.use('/staff', staffRoutes);
+router.use('/users', userRoutes);
 
 export default router;

@@ -73,7 +73,7 @@ app.get('/', (req: Request, res: Response) => {
         changePassword: 'POST /api/auth/change-password',
       },
 
-      users: {
+      authUsers: {
         list: 'GET /api/users',
         getById: 'GET /api/users/:id',
         create: 'POST /api/users',
@@ -84,18 +84,18 @@ app.get('/', (req: Request, res: Response) => {
         resetPassword: 'PATCH /api/users/:id/reset-password',
       },
 
-      students: {
-        list: 'GET /api/students',
-        getById: 'GET /api/students/:id',
-        create: 'POST /api/students',
-        update: 'PATCH /api/students/:id',
-        remove: 'DELETE /api/students/:id',
+      clients: {
+        dropdown: 'GET /api/users/dropdown',
+        list: 'GET /api/users',
+        getById: 'GET /api/users/:id',
+        create: 'POST /api/users',
+        update: 'PATCH /api/users/:id',
       },
 
       credits: {
-        assign: 'POST /api/students/:id/credits',
-        list: 'GET  /api/students/:id/credits',
-        consume: 'POST /api/students/:id/credits/consume',
+        assign: 'POST /api/users/:id/credits',
+        list: 'GET  /api/users/:id/credits',
+        consume: 'POST /api/users/:id/credits/consume',
       },
 
       productTypes: {
@@ -116,7 +116,7 @@ app.get('/', (req: Request, res: Response) => {
         getById: 'GET /api/staff/:id',
         create: 'POST /api/staff',
         update: 'PATCH /api/staff/:id',
-        remove: 'DELETE /api/staff/:id',
+        deactivate: 'PATCH /api/staff/:id/deactivate',
       },
 
       system: {

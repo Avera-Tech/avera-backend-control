@@ -14,8 +14,6 @@ interface UserAttributes {
   cpf?: string;
   phone?: string;
   birthday?: Date;
-  // ── Profissional ───────────────────────────────
-  position?: string;
   // ── Endereço (compartilhado) ───────────────────
   zipCode?: string;
   state?: string;
@@ -37,7 +35,6 @@ interface UserCreationAttributes extends Optional<
   | 'cpf'
   | 'phone'
   | 'birthday'
-  | 'position'
   | 'zipCode'
   | 'state'
   | 'city'
@@ -56,7 +53,6 @@ class User extends Model<UserAttributes, UserCreationAttributes> implements User
   public cpf!: string;
   public phone!: string;
   public birthday!: Date;
-  public position!: string;
   public zipCode!: string;
   public state!: string;
   public city!: string;
@@ -117,12 +113,6 @@ User.init(
     birthday: {
       type: DataTypes.DATEONLY,
       allowNull: true,
-    },
-    // ── Profissional ──────────────────────────────
-    position: {
-      type: DataTypes.STRING(100),
-      allowNull: true,
-      comment: 'Cargo do funcionário',
     },
     // ── Endereço ──────────────────────────────────
     zipCode: {

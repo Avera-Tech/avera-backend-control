@@ -35,8 +35,8 @@ router.post('/', async (req: Request, res: Response) => {
     // ── 1. Roles ─────────────────────────────────────────────────────────────
     const rolesData = [
       { name: 'Administrador', slug: 'admin', description: 'Acesso total ao sistema da Avera CT', active: true },
-      { name: 'Empregado', slug: 'employee', description: 'Acesso administrativo: alunos, turmas, financeiro', active: true },
-      { name: 'Professor', slug: 'teacher', description: 'Acesso às aulas e fichas dos alunos', active: true },
+      { name: 'Empregado', slug: 'employee', description: 'Acesso administrativo: clientes, turmas, financeiro', active: true },
+      { name: 'Professor', slug: 'teacher', description: 'Acesso às aulas e fichas dos clientes', active: true },
     ];
 
     for (const role of rolesData) {
@@ -60,11 +60,11 @@ router.post('/', async (req: Request, res: Response) => {
       { name: 'Editar staff', slug: 'staff:update', resource: 'staff', action: 'update', active: true },
       { name: 'Deletar staff', slug: 'staff:delete', resource: 'staff', action: 'delete', active: true },
       // Alunos
-      { name: 'Listar alunos', slug: 'students:list', resource: 'students', action: 'list', active: true },
-      { name: 'Ver aluno', slug: 'students:read', resource: 'students', action: 'read', active: true },
-      { name: 'Criar aluno', slug: 'students:create', resource: 'students', action: 'create', active: true },
-      { name: 'Editar aluno', slug: 'students:update', resource: 'students', action: 'update', active: true },
-      { name: 'Deletar aluno', slug: 'students:delete', resource: 'students', action: 'delete', active: true },
+      { name: 'Listar clientes', slug: 'clients:list', resource: 'clients', action: 'list', active: true },
+      { name: 'Ver cliente', slug: 'clients:read', resource: 'clients', action: 'read', active: true },
+      { name: 'Criar cliente', slug: 'clients:create', resource: 'clients', action: 'create', active: true },
+      { name: 'Editar cliente', slug: 'clients:update', resource: 'clients', action: 'update', active: true },
+      { name: 'Deletar cliente', slug: 'clients:delete', resource: 'clients', action: 'delete', active: true },
       // Aulas
       { name: 'Listar aulas', slug: 'classes:list', resource: 'classes', action: 'list', active: true },
       { name: 'Ver aula', slug: 'classes:read', resource: 'classes', action: 'read', active: true },
@@ -115,7 +115,7 @@ router.post('/', async (req: Request, res: Response) => {
       const employeeSlugs = [
         'users:list', 'users:read',
         'staff:list', 'staff:read', 'staff:create', 'staff:update', 'staff:delete',
-        'students:list', 'students:read', 'students:create', 'students:update', 'students:delete',
+        'clients:list', 'clients:read', 'clients:create', 'clients:update', 'clients:delete',
         'classes:list', 'classes:read', 'classes:create', 'classes:update', 'classes:delete',
         'financial:read', 'financial:manage',
         'reports:read', 'reports:export',
@@ -132,11 +132,11 @@ router.post('/', async (req: Request, res: Response) => {
       results['role_permissions:employee'] = `✅ permissões atribuídas ao employee`;
     }
 
-    // Teacher → aulas e leitura de alunos
+    // Teacher → aulas e leitura de clientes
     if (teacherRole) {
       const teacherSlugs = [
         'staff:list', 'staff:read',
-        'students:list', 'students:read',
+        'clients:list', 'clients:read',
         'classes:list', 'classes:read', 'classes:create', 'classes:update',
         'dashboard:read',
       ];

@@ -1,5 +1,4 @@
 import { Request, Response, NextFunction } from 'express';
-import Employee from '../students/models/Students.model';
 import Role from '../rbac/models/Role.model';
 import Permission from '../rbac/models/Permission.model';
 import UserRole from '../rbac/models/UserRole.model';

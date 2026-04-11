@@ -3,21 +3,21 @@ import { Op } from 'sequelize';
 import coreDB from '../../../config/database.core';
 import StudentCredit from '../models/StudentCredit.model';
 import CreditTransaction from '../models/CreditTransaction.model';
-import Student from '../../students/models/Students.model';
+import ClientUser from '../../../modules/user/models/User.model';
 import Product from '../../products/models/Product.model';
 import ProductType from '../../products/models/ProductType.model';
 
 export class CreditController {
 
-  // ─── POST /students/:id/credits ──────────────────────────────────────────────
+  // ─── POST /users/:id/credits ──────────────────────────────────────────────────
   /**
-   * Recebe product_id, cria lote de créditos e registra transação com reason = 'purchase'.
+   * Recebe productId, cria lote de créditos e registra transação com reason = 'purchase'.
    * Toda a operação é atômica via transaction Sequelize.
    */
   static async assignCredits(req: Request, res: Response): Promise<Response> {
     const t = await coreDB.transaction();
     try {
-      const studentId = Number(req.params.id);
+      const clientId = Number(req.params.id);
       const { productId } = req.body;
 
       if (!productId) {
@@ -25,14 +25,12 @@ export class CreditController {
         return res.status(400).json({ success: false, error: 'productId é obrigatório' });
       }
 
-      // 1. Verificar se o aluno existe
-      const student = await Student.findByPk(studentId, { transaction: t });
-      if (!student) {
+      const client = await ClientUser.findByPk(clientId, { transaction: t });
+      if (!client) {
         await t.rollback();
-        return res.status(404).json({ success: false, error: 'Aluno não encontrado' });
+        return res.status(404).json({ success: false, error: 'Cliente não encontrado' });
       }
 
-      // 2. Verificar se o produto existe e está ativo
       const product = await Product.findOne({
         where: { id: productId, active: true },
         transaction: t,
@@ -42,14 +40,12 @@ export class CreditController {
         return res.status(404).json({ success: false, error: 'Produto não encontrado ou inativo' });
       }
 
-      // 3. Calcular expiração: hoje + validityDays
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + product.validityDays);
 
-      // 4. Criar lote de créditos
       const credit = await StudentCredit.create(
         {
-          studentId,
+          clientId,
           productId: product.id,
           totalCredits:     product.credits,
           usedCredits:      0,
@@ -60,11 +56,10 @@ export class CreditController {
         { transaction: t }
       );
 
-      // 5. Registrar transação de entrada
       await CreditTransaction.create(
         {
           studentCreditId: credit.id,
-          studentId,
+          clientId,
           delta:   product.credits,
           reason:  'purchase',
           note:    `Compra do produto: ${product.name}`,
@@ -79,7 +74,7 @@ export class CreditController {
         message: 'Créditos atribuídos com sucesso',
         credit: {
           id:               credit.id,
-          studentId:        credit.studentId,
+          clientId:         credit.clientId,
           productId:        credit.productId,
           totalCredits:     credit.totalCredits,
           usedCredits:      credit.usedCredits,
@@ -88,34 +83,33 @@ export class CreditController {
           expiresAt:        credit.expiresAt,
         },
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       await t.rollback();
       console.error('Erro ao atribuir créditos:', error);
+      const message = error instanceof Error ? error.message : undefined;
       return res.status(500).json({
         success: false,
         error: 'Erro ao atribuir créditos',
-        message: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        message: process.env.NODE_ENV === 'development' ? message : undefined,
       });
     }
   }
 
-  // ─── GET /students/:id/credits ────────────────────────────────────────────────
+  // ─── GET /users/:id/credits ───────────────────────────────────────────────────
   /**
-   * Retorna todos os lotes do aluno com total consolidado de créditos disponíveis.
+   * Retorna todos os lotes do cliente com total consolidado de créditos disponíveis.
    */
-  static async getStudentCredits(req: Request, res: Response): Promise<Response> {
+  static async getClientCredits(req: Request, res: Response): Promise<Response> {
     try {
-      const studentId = Number(req.params.id);
+      const clientId = Number(req.params.id);
 
-      // 1. Verificar se o aluno existe
-      const student = await Student.findByPk(studentId);
-      if (!student) {
-        return res.status(404).json({ success: false, error: 'Aluno não encontrado' });
+      const client = await ClientUser.findByPk(clientId);
+      if (!client) {
+        return res.status(404).json({ success: false, error: 'Cliente não encontrado' });
       }
 
-      // 2. Buscar todos os lotes com produto populado
       const credits = await StudentCredit.findAll({
-        where: { studentId },
+        where: { clientId },
         include: [
           {
             model: Product,
@@ -133,7 +127,6 @@ export class CreditController {
         order: [['expiresAt', 'ASC']],
       });
 
-      // 3. Consolidar total disponível apenas dos lotes ativos
       const totalAvailable = credits
         .filter((c) => c.status === 'active')
         .reduce((sum, c) => sum + c.availableCredits, 0);
@@ -147,41 +140,37 @@ export class CreditController {
         },
         credits,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Erro ao buscar créditos:', error);
+      const message = error instanceof Error ? error.message : undefined;
       return res.status(500).json({
         success: false,
         error: 'Erro ao buscar créditos',
-        message: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        message: process.env.NODE_ENV === 'development' ? message : undefined,
       });
     }
   }
 
-  // ─── POST /students/:id/credits/consume ──────────────────────────────────────
+  // ─── POST /users/:id/credits/consume ─────────────────────────────────────────
   /**
    * Debita 1 crédito do lote mais próximo de vencer (FEFO).
    * Retorna 400 se saldo insuficiente.
-   * Toda a operação é atômica via transaction Sequelize.
    */
   static async consumeCredit(req: Request, res: Response): Promise<Response> {
     const t = await coreDB.transaction();
     try {
-      const studentId = Number(req.params.id);
+      const clientId = Number(req.params.id);
       const { referenceId, note } = req.body;
 
-      // 1. Verificar se o aluno existe
-      const student = await Student.findByPk(studentId, { transaction: t });
-      if (!student) {
+      const client = await ClientUser.findByPk(clientId, { transaction: t });
+      if (!client) {
         await t.rollback();
-        return res.status(404).json({ success: false, error: 'Aluno não encontrado' });
+        return res.status(404).json({ success: false, error: 'Cliente não encontrado' });
       }
 
-      // 2. Buscar lote mais próximo de vencer com saldo (FEFO)
-      //    — apenas lotes ativos, não expirados, com availableCredits > 0
-      //    — ordenado por expiresAt ASC para pegar o que vence primeiro
       const lote = await StudentCredit.findOne({
         where: {
-          studentId,
+          clientId,
           status:           'active',
           availableCredits: { [Op.gt]: 0 },
           expiresAt:        { [Op.gt]: new Date() },
@@ -191,7 +180,6 @@ export class CreditController {
         transaction: t,
       });
 
-      // 3. Sem saldo — retorna 400
       if (!lote) {
         await t.rollback();
         return res.status(400).json({
@@ -200,22 +188,19 @@ export class CreditController {
         });
       }
 
-      // 4. Debitar 1 crédito do lote
       lote.usedCredits      += 1;
       lote.availableCredits -= 1;
 
-      // 5. Atualizar status se zerou
       if (lote.availableCredits === 0) {
         lote.status = 'exhausted';
       }
 
       await lote.save({ transaction: t });
 
-      // 6. Registrar transação de consumo
       const transaction = await CreditTransaction.create(
         {
           studentCreditId: lote.id,
-          studentId,
+          clientId,
           delta:       -1,
           reason:      'consume',
           referenceId: referenceId ?? null,
@@ -242,13 +227,14 @@ export class CreditController {
           reason: transaction.reason,
         },
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       await t.rollback();
       console.error('Erro ao consumir crédito:', error);
+      const message = error instanceof Error ? error.message : undefined;
       return res.status(500).json({
         success: false,
         error: 'Erro ao consumir crédito',
-        message: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        message: process.env.NODE_ENV === 'development' ? message : undefined,
       });
     }
   }

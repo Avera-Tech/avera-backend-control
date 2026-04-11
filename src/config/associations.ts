@@ -8,6 +8,8 @@ import Product from '../core/products/models/Product.model';
 import ProductType from '../core/products/models/ProductType.model';
 import StudentCredit from '../core/credits/models/StudentCredit.model';
 import CreditTransaction from '../core/credits/models/CreditTransaction.model';
+import ClientUser from '../modules/user/models/User.model';
+import UserLevel from '../modules/user/models/UserLevel.model';
 
 export const setupAssociations = (): void => {
   // User <-> Role (Many-to-Many via UserRole)
@@ -54,6 +56,15 @@ export const setupAssociations = (): void => {
   StudentCredit.belongsTo(Product, { foreignKey: 'productId', as: 'product' });
   StudentCredit.hasMany(CreditTransaction, { foreignKey: 'studentCreditId', as: 'transactions' });
   CreditTransaction.belongsTo(StudentCredit, { foreignKey: 'studentCreditId', as: 'credit' });
+
+  // ClientUser (clientes/alunos) <-> UserLevel
+  ClientUser.belongsTo(UserLevel, { foreignKey: 'levelId', as: 'level' });
+  UserLevel.hasMany(ClientUser, { foreignKey: 'levelId', as: 'users' });
+
+  // ClientUser <-> créditos
+  ClientUser.hasMany(StudentCredit, { foreignKey: 'clientId', as: 'credits' });
+  StudentCredit.belongsTo(ClientUser, { foreignKey: 'clientId', as: 'client' });
+  CreditTransaction.belongsTo(ClientUser, { foreignKey: 'clientId', as: 'client' });
 
   console.log('✅ Associações configuradas');
 };

@@ -6,7 +6,7 @@ export type TransactionReason = 'purchase' | 'consume' | 'refund' | 'adjustment'
 interface CreditTransactionAttributes {
   id: number;
   studentCreditId: number;
-  studentId: number;
+  clientId: number;
   delta: number;
   reason: TransactionReason;
   referenceId?: number;
@@ -24,7 +24,7 @@ class CreditTransaction
 {
   public id!: number;
   public studentCreditId!: number;
-  public studentId!: number;
+  public clientId!: number;
   public delta!: number;
   public reason!: TransactionReason;
   public referenceId!: number;
@@ -49,13 +49,13 @@ CreditTransaction.init(
       onUpdate: 'CASCADE',
       comment: 'Lote de créditos afetado pela transação',
     },
-    studentId: {
+    clientId: {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
-      references: { model: 'students', key: 'id' },
+      references: { model: 'clients', key: 'id' },
       onDelete: 'CASCADE',
       onUpdate: 'CASCADE',
-      comment: 'Desnormalizado para facilitar queries de histórico por aluno',
+      comment: 'Desnormalizado para facilitar queries de histórico por cliente',
     },
     delta: {
       type: DataTypes.INTEGER,
@@ -84,7 +84,7 @@ CreditTransaction.init(
     timestamps: true,
     underscored: false,
     indexes: [
-      { fields: ['studentId'],        name: 'idx_credit_transactions_student_id' },
+      { fields: ['clientId'],         name: 'idx_credit_transactions_client_id' },
       { fields: ['studentCreditId'],  name: 'idx_credit_transactions_credit_id' },
       { fields: ['reason'],           name: 'idx_credit_transactions_reason' },
     ],

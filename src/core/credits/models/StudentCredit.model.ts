@@ -5,7 +5,7 @@ export type CreditStatus = 'active' | 'expired' | 'exhausted';
 
 interface StudentCreditAttributes {
   id: number;
-  studentId: number;
+  clientId: number;
   productId: number;
   totalCredits: number;
   usedCredits: number;
@@ -24,7 +24,7 @@ class StudentCredit
   implements StudentCreditAttributes
 {
   public id!: number;
-  public studentId!: number;
+  public clientId!: number;
   public productId!: number;
   public totalCredits!: number;
   public usedCredits!: number;
@@ -43,13 +43,13 @@ StudentCredit.init(
       autoIncrement: true,
       primaryKey: true,
     },
-    studentId: {
+    clientId: {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
-      references: { model: 'students', key: 'id' },
+      references: { model: 'clients', key: 'id' },
       onDelete: 'CASCADE',
       onUpdate: 'CASCADE',
-      comment: 'FK para a tabela students',
+      comment: 'FK para a tabela clients',
     },
     productId: {
       type: DataTypes.INTEGER.UNSIGNED,
@@ -93,11 +93,11 @@ StudentCredit.init(
     timestamps: true,
     underscored: false,
     indexes: [
-      { fields: ['studentId'],          name: 'idx_student_credits_student_id' },
+      { fields: ['clientId'],            name: 'idx_student_credits_client_id' },
       { fields: ['productId'],          name: 'idx_student_credits_product_id' },
       { fields: ['status'],             name: 'idx_student_credits_status' },
       { fields: ['expiresAt'],          name: 'idx_student_credits_expires_at' },
-      { fields: ['studentId', 'status', 'expiresAt'], name: 'idx_student_credits_fefo' },
+      { fields: ['clientId', 'status', 'expiresAt'],  name: 'idx_student_credits_fefo' },
     ],
   }
 );
