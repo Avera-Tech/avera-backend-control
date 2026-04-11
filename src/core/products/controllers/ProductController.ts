@@ -143,6 +143,30 @@ export class ProductController {
   }
 
   /**
+   * GET /products/:id
+   */
+  static async getById(req: Request, res: Response): Promise<Response> {
+    try {
+      const { id } = req.params;
+      const product = await Product.findByPk(Number(id), {
+        include: [{ model: ProductType, as: 'productType', attributes: ['id', 'name', 'color'] }],
+      });
+      if (!product) {
+        return res.status(404).json({ success: false, error: 'Produto não encontrado' });
+      }
+      return res.json({ success: true, product });
+    }
+    catch (error: any) {
+      console.error('Erro ao buscar produto:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Erro ao buscar produto',
+        message: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      });
+    }
+  }
+
+  /**
    * POST /products
    * Cria pacote — se recurring = true, recurringInterval é obrigatório
    */
