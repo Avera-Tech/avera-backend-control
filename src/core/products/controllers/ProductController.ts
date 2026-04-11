@@ -305,4 +305,30 @@ export class ProductController {
       });
     }
   }
+
+  /**
+   * DELETE /products/:id
+   * Remove produto
+   */
+  static async remove(req: Request, res: Response): Promise<Response> {
+    try {
+      const { id } = req.params;
+      const product = await Product.findByPk(Number(id));
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          error: 'Produto não encontrado',
+        });
+      }
+      await product.destroy();
+      return res.json({ success: true, message: 'Produto removido com sucesso' });
+    } catch (error: any) {
+      console.error('Erro ao remover produto:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Erro ao deletar produto',
+        message: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      });
+    }
+  }
 }

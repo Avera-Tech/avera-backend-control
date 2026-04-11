@@ -56,4 +56,14 @@ router.patch(
   ProductController.update,
 );
 
+/**
+ * DELETE /products/:id
+ */
+router.delete(
+  '/:id',
+  authenticateToken,
+  checkPermissions(['products:delete']),
+  ProductController.remove,
+);
+
 export default router;
