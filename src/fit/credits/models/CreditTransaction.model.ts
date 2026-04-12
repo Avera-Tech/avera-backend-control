@@ -6,7 +6,7 @@ export type TransactionReason = 'purchase' | 'consume' | 'refund' | 'adjustment'
 interface CreditTransactionAttributes {
   id: number;
   studentCreditId: number;
-  clientId: number;
+  userId: number;
   delta: number;
   reason: TransactionReason;
   referenceId?: number;
@@ -24,7 +24,7 @@ class CreditTransaction
 {
   public id!: number;
   public studentCreditId!: number;
-  public clientId!: number;
+  public userId!: number;
   public delta!: number;
   public reason!: TransactionReason;
   public referenceId!: number;
@@ -44,49 +44,43 @@ CreditTransaction.init(
     studentCreditId: {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
-      references: { model: 'student_credits', key: 'id' },
+      references: { model: 'user_credits', key: 'id' },
       onDelete: 'RESTRICT',
       onUpdate: 'CASCADE',
-      comment: 'Lote de créditos afetado pela transação',
     },
-    clientId: {
+    userId: {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
-      references: { model: 'clients', key: 'id' },
+      references: { model: 'users', key: 'id' },
       onDelete: 'CASCADE',
       onUpdate: 'CASCADE',
-      comment: 'Desnormalizado para facilitar queries de histórico por cliente',
     },
     delta: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      comment: 'Variação de créditos — positivo para entrada, negativo para consumo',
     },
     reason: {
       type: DataTypes.ENUM('purchase', 'consume', 'refund', 'adjustment', 'expiration'),
       allowNull: false,
-      comment: 'Motivo da transação',
     },
     referenceId: {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: true,
-      comment: 'ID de referência externa — ex: id da aula consumida, id do pedido',
     },
     note: {
       type: DataTypes.STRING(255),
       allowNull: true,
-      comment: 'Observação livre para auditoria',
     },
   },
   {
     sequelize: coreDB,
     tableName: 'credit_transactions',
     timestamps: true,
-    underscored: false,
+    underscored: true,
     indexes: [
-      { fields: ['clientId'],         name: 'idx_credit_transactions_client_id' },
-      { fields: ['studentCreditId'],  name: 'idx_credit_transactions_credit_id' },
-      { fields: ['reason'],           name: 'idx_credit_transactions_reason' },
+      { fields: ['user_id'],           name: 'idx_credit_transactions_user_id' },
+      { fields: ['student_credit_id'], name: 'idx_credit_transactions_credit_id' },
+      { fields: ['reason'],            name: 'idx_credit_transactions_reason' },
     ],
   }
 );

@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
 export interface TokenPayload {
-  userId: number;
+  staffId: number;
   email: string;
   iat?: number;
   exp?: number;
@@ -16,19 +16,14 @@ declare global {
   }
 }
 
-/**
- * Middleware de autenticação JWT
- * Valida o token Bearer e adiciona os dados do usuário ao request
- */
 export const authenticateToken = (
   req: Request,
   res: Response,
   next: NextFunction
 ): Response | void => {
   try {
-    // 1. Extrair token do header Authorization
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    const token = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
       return res.status(401).json({
@@ -37,7 +32,6 @@ export const authenticateToken = (
       });
     }
 
-    // 2. Verificar se JWT_SECRET existe
     const secret = process.env.JWT_SECRET;
     if (!secret) {
       console.error('❌ JWT_SECRET não definido no .env');
@@ -47,16 +41,10 @@ export const authenticateToken = (
       });
     }
 
-    // 3. Verificar e decodificar o token
     const decoded = jwt.verify(token, secret) as TokenPayload;
-
-    // 4. Adicionar dados do usuário ao request
     req.user = decoded;
-
-    // 5. Continuar para a próxima função
     next();
   } catch (err: any) {
-    // 6. Tratamento de erros específicos do JWT
     if (err.name === 'TokenExpiredError') {
       return res.status(401).json({
         success: false,

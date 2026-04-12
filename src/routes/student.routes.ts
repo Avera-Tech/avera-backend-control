@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { authenticateToken } from '../core/middleware/authenticateToken';
 import { checkPermissions } from '../core/middleware/checkPermissions';
-import { StudentController } from '../core/students/controllers/StudentController';
-import { CreditController } from '../core/credits/controllers/CreditController';
+import { listUsers, getUserById, createUser, updateUser } from '../modules/user/controllers/userController';
+import { CreditController } from '../fit/credits/controllers/CreditController';
 
 const router = Router();
 
@@ -16,7 +16,7 @@ router.get(
   '/',
   authenticateToken,
   checkPermissions(['students:list']),
-  StudentController.list,
+  listUsers,
 );
 
 /**
@@ -26,7 +26,7 @@ router.get(
   '/:id',
   authenticateToken,
   checkPermissions(['students:read']),
-  StudentController.getById,
+  getUserById,
 );
 
 /**
@@ -37,7 +37,7 @@ router.post(
   '/',
   authenticateToken,
   checkPermissions(['students:create']),
-  StudentController.create,
+  createUser,
 );
 
 /**
@@ -48,7 +48,7 @@ router.patch(
   '/:id',
   authenticateToken,
   checkPermissions(['students:update']),
-  StudentController.update,
+  updateUser,
 );
 
 /**
@@ -58,7 +58,7 @@ router.delete(
   '/:id',
   authenticateToken,
   checkPermissions(['students:delete']),
-  StudentController.remove,
+  (_req, res) => res.status(501).json({ success: false, message: 'Not implemented' }),
 );
 
 // ─── Créditos ─────────────────────────────────────────────────────────────────
@@ -74,7 +74,7 @@ router.get(
   '/:id/credits',
   authenticateToken,
   checkPermissions(['students:read']),
-  CreditController.getStudentCredits,
+  CreditController.getClientCredits,
 );
 
 router.post(

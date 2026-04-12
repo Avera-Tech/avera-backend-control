@@ -15,8 +15,9 @@ interface ProductAttributes {
   name: string;
   description?: string;
   credits: number;
-  price: number;
+  value: number;
   validityDays: number;
+  purchaseLimit?: number;
   recurring: boolean;
   recurringInterval?: RecurringInterval;
   active: boolean;
@@ -25,8 +26,10 @@ interface ProductAttributes {
 }
 
 interface ProductCreationAttributes
-  extends Optional<ProductAttributes, 'id' | 'description' | 'recurring' | 'recurringInterval' | 'active'>
-{}
+  extends Optional<
+    ProductAttributes,
+    'id' | 'description' | 'purchaseLimit' | 'recurring' | 'recurringInterval' | 'active'
+  > {}
 
 // ─── Model ────────────────────────────────────────────────────────────────────
 
@@ -39,8 +42,9 @@ class Product
   public name!: string;
   public description!: string;
   public credits!: number;
-  public price!: number;
+  public value!: number;
   public validityDays!: number;
+  public purchaseLimit!: number;
   public recurring!: boolean;
   public recurringInterval!: RecurringInterval;
   public active!: boolean;
@@ -82,7 +86,7 @@ Product.init(
       allowNull: false,
       comment: 'Quantidade de créditos (aulas) incluídos no pacote',
     },
-    price: {
+    value: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
       comment: 'Preço fixo do pacote em reais',
@@ -91,6 +95,11 @@ Product.init(
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
       comment: 'Dias de validade dos créditos após a compra (ex: 30, 60, 90)',
+    },
+    purchaseLimit: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: true,
+      comment: 'Limite de vezes que um aluno pode comprar este produto — null = sem limite',
     },
     recurring: {
       type: DataTypes.BOOLEAN,

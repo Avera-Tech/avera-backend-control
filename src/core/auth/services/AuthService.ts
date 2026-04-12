@@ -1,12 +1,11 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import User from '../../users/models/User.model';
+import Staff from '../../staff/models/Staff.model';
 import Role from '../../rbac/models/Role.model';
 import UserRole from '../../rbac/models/UserRole.model';
-import { OtpService } from './OtpService';
 
 export interface JWTPayload {
-  userId: number;
+  staffId: number;
   email: string;
 }
 
@@ -15,13 +14,12 @@ export interface LoginResponse {
   token?: string;
   refreshToken?: string;
   expiresIn?: string | number;
-  user?: {
+  staff?: {
     id: number;
     name: string;
     email: string;
   };
   error?: string;
-  requiresVerification?: boolean;
 }
 
 export class AuthService {
@@ -45,35 +43,25 @@ export class AuthService {
     try {
       const normalizedEmail = email.trim().toLowerCase();
 
-      const user = await User.findOne({ where: { email: normalizedEmail } });
+      const staff = await Staff.findOne({ where: { email: normalizedEmail } });
 
-      if (!user) {
+      if (!staff) {
         return { success: false, error: 'Email ou senha incorretos' };
       }
 
-      if (!user.emailVerified) {
-        // Reenvia OTP caso a conta ainda não foi verificada
-        await OtpService.sendOtp(user.id, user.email, 'signup');
-        return {
-          success: false,
-          error: 'Conta pendente de verificação. Enviamos um novo código para o seu email.',
-          requiresVerification: true,
-        };
-      }
-
-      if (!user.active) {
+      if (!staff.active) {
         return { success: false, error: 'Conta desativada' };
       }
 
-      const passwordMatch = await bcrypt.compare(password, user.password);
+      const passwordMatch = await bcrypt.compare(password, staff.password);
       if (!passwordMatch) {
         return { success: false, error: 'Email ou senha incorretos' };
       }
 
-      user.lastLogin = new Date();
-      await user.save();
+      staff.lastLogin = new Date();
+      await staff.save();
 
-      const payload: JWTPayload = { userId: user.id, email: user.email };
+      const payload: JWTPayload = { staffId: staff.id, email: staff.email };
       const token = this.generateAuthToken(payload);
       const refreshToken = this.generateRefreshToken(payload);
 
@@ -81,16 +69,22 @@ export class AuthService {
         success: true,
         token,
         refreshToken,
-        expiresIn: (process.env.JWT_EXPIRES_IN || '24h') as jwt.SignOptions['expiresIn'],
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-        },
+        expiresIn: process.env.JWT_EXPIRES_IN || '24h',
+        staff: { id: staff.id, name: staff.name, email: staff.email },
       };
     } catch (error: any) {
       console.error('Erro no login:', error);
       return { success: false, error: 'Erro ao realizar login' };
+    }
+  }
+
+  static verifyToken(token: string): JWTPayload | null {
+    try {
+      const secret = process.env.JWT_SECRET;
+      if (!secret) throw new Error('JWT_SECRET não configurado');
+      return jwt.verify(token, secret) as JWTPayload;
+    } catch {
+      return null;
     }
   }
 
@@ -99,11 +93,11 @@ export class AuthService {
     email: string,
     password: string,
     roleSlug: string = 'admin'
-  ): Promise<{ success: boolean; user?: any; error?: string }> {
+  ): Promise<{ success: boolean; staff?: any; error?: string }> {
     try {
       const normalizedEmail = email.trim().toLowerCase();
 
-      const existing = await User.findOne({ where: { email: normalizedEmail } });
+      const existing = await Staff.findOne({ where: { email: normalizedEmail } });
       if (existing) {
         return { success: false, error: 'Email já cadastrado' };
       }
@@ -116,44 +110,23 @@ export class AuthService {
       const saltRounds = Number(process.env.BCRYPT_ROUNDS) || 10;
       const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-      const user = await User.create({
+      const staff = await Staff.create({
         name,
         email: normalizedEmail,
         password: hashedPassword,
-        active: false,        // inativo até verificar o email
-        emailVerified: false,
+        active: true,
+        emailVerified: true,
       });
 
-      await UserRole.create({
-        userId: user.id,
-        roleId: role.id,
-      });
-
-      // Envia OTP de verificação por email
-      await OtpService.sendOtp(user.id, user.email, 'signup');
+      await UserRole.create({ staffId: staff.id, roleId: role.id });
 
       return {
         success: true,
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: roleSlug,
-        },
+        staff: { id: staff.id, name: staff.name, email: staff.email, role: roleSlug },
       };
     } catch (error: any) {
       console.error('Erro no registro:', error);
-      return { success: false, error: 'Erro ao registrar usuário' };
-    }
-  }
-
-  static verifyToken(token: string): JWTPayload | null {
-    try {
-      const secret = process.env.JWT_SECRET;
-      if (!secret) throw new Error('JWT_SECRET não configurado');
-      return jwt.verify(token, secret) as JWTPayload;
-    } catch {
-      return null;
+      return { success: false, error: 'Erro ao registrar staff' };
     }
   }
 }

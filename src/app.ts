@@ -53,7 +53,7 @@ app.use('/api', routes);
 /**
  * Rota raiz
  */
-app.get('/', (req: Request, res: Response) => {
+app.get('/', (_req: Request, res: Response) => {
   res.json({
     success: true,
     message: 'Backend Node.js - Multi-Database (Master + Core) com RBAC',
@@ -141,7 +141,7 @@ app.use((req: Request, res: Response) => {
 /**
  * Handler de erros global
  */
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error('Erro não tratado:', err);
 
   res.status(500).json({

@@ -4,8 +4,8 @@ import coreDB from '../../../config/database.core';
 import StudentCredit from '../models/StudentCredit.model';
 import CreditTransaction from '../models/CreditTransaction.model';
 import ClientUser from '../../../modules/user/models/User.model';
-import Product from '../../products/models/Product.model';
-import ProductType from '../../products/models/ProductType.model';
+import Product from '../../../core/products/models/Product.model';
+import ProductType from '../../../core/products/models/ProductType.model';
 
 export class CreditController {
 
@@ -17,7 +17,7 @@ export class CreditController {
   static async assignCredits(req: Request, res: Response): Promise<Response> {
     const t = await coreDB.transaction();
     try {
-      const clientId = Number(req.params.id);
+      const userId = Number(req.params.id);
       const { productId } = req.body;
 
       if (!productId) {
@@ -25,7 +25,7 @@ export class CreditController {
         return res.status(400).json({ success: false, error: 'productId é obrigatório' });
       }
 
-      const client = await ClientUser.findByPk(clientId, { transaction: t });
+      const client = await ClientUser.findByPk(userId, { transaction: t });
       if (!client) {
         await t.rollback();
         return res.status(404).json({ success: false, error: 'Cliente não encontrado' });
@@ -45,7 +45,7 @@ export class CreditController {
 
       const credit = await StudentCredit.create(
         {
-          clientId,
+          userId,
           productId: product.id,
           totalCredits:     product.credits,
           usedCredits:      0,
@@ -59,7 +59,7 @@ export class CreditController {
       await CreditTransaction.create(
         {
           studentCreditId: credit.id,
-          clientId,
+          userId,
           delta:   product.credits,
           reason:  'purchase',
           note:    `Compra do produto: ${product.name}`,
@@ -74,7 +74,7 @@ export class CreditController {
         message: 'Créditos atribuídos com sucesso',
         credit: {
           id:               credit.id,
-          clientId:         credit.clientId,
+          userId:         credit.userId,
           productId:        credit.productId,
           totalCredits:     credit.totalCredits,
           usedCredits:      credit.usedCredits,
@@ -101,15 +101,15 @@ export class CreditController {
    */
   static async getClientCredits(req: Request, res: Response): Promise<Response> {
     try {
-      const clientId = Number(req.params.id);
+      const userId = Number(req.params.id);
 
-      const client = await ClientUser.findByPk(clientId);
+      const client = await ClientUser.findByPk(userId);
       if (!client) {
         return res.status(404).json({ success: false, error: 'Cliente não encontrado' });
       }
 
       const credits = await StudentCredit.findAll({
-        where: { clientId },
+        where: { userId },
         include: [
           {
             model: Product,
@@ -159,10 +159,10 @@ export class CreditController {
   static async consumeCredit(req: Request, res: Response): Promise<Response> {
     const t = await coreDB.transaction();
     try {
-      const clientId = Number(req.params.id);
+      const userId = Number(req.params.id);
       const { referenceId, note } = req.body;
 
-      const client = await ClientUser.findByPk(clientId, { transaction: t });
+      const client = await ClientUser.findByPk(userId, { transaction: t });
       if (!client) {
         await t.rollback();
         return res.status(404).json({ success: false, error: 'Cliente não encontrado' });
@@ -170,7 +170,7 @@ export class CreditController {
 
       const lote = await StudentCredit.findOne({
         where: {
-          clientId,
+          userId,
           status:           'active',
           availableCredits: { [Op.gt]: 0 },
           expiresAt:        { [Op.gt]: new Date() },
@@ -200,7 +200,7 @@ export class CreditController {
       const transaction = await CreditTransaction.create(
         {
           studentCreditId: lote.id,
-          clientId,
+          userId,
           delta:       -1,
           reason:      'consume',
           referenceId: referenceId ?? null,

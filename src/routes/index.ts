@@ -6,6 +6,7 @@ import productTypeRoutes from './productType.routes';
 import productRoutes from './product.routes';
 import staffRoutes from '../modules/staff/routes/staff.routes';
 import userRoutes from '../modules/user/routes/user.routes';
+import checkoutRoutes from './checkout.routes';
 
 const router = Router();
 
@@ -24,5 +25,6 @@ router.use('/product-types', productTypeRoutes);
 router.use('/products', productRoutes);
 router.use('/staff', staffRoutes);
 router.use('/users', userRoutes);
+router.use('/checkout', checkoutRoutes);
 
 export default router;

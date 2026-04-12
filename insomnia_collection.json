@@ -1,0 +1,585 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-04-11T00:00:00.000Z",
+  "__export_source": "avera-backend-node",
+  "resources": [
+    {
+      "_id": "wrk_avera",
+      "_type": "workspace",
+      "parentId": null,
+      "name": "Avera Backend",
+      "description": "Collection completa da API Avera CT",
+      "scope": "collection"
+    },
+
+    {
+      "_id": "env_avera_base",
+      "_type": "environment",
+      "parentId": "wrk_avera",
+      "name": "Local",
+      "data": {
+        "base_url": "http://localhost:3000/api",
+        "token": "",
+        "refresh_token": "",
+        "sync_key": "your-sync-secret-key",
+        "user_id": "1",
+        "staff_id": "1",
+        "product_id": "1",
+        "product_type_id": "1"
+      },
+      "color": "#4CAF50",
+      "isPrivate": false
+    },
+
+    {
+      "_id": "fld_health",
+      "_type": "request_group",
+      "parentId": "wrk_avera",
+      "name": "Health",
+      "description": ""
+    },
+    {
+      "_id": "req_health",
+      "_type": "request",
+      "parentId": "fld_health",
+      "name": "Health Check",
+      "method": "GET",
+      "url": "{{ base_url }}/health",
+      "headers": [],
+      "body": {}
+    },
+
+    {
+      "_id": "fld_system",
+      "_type": "request_group",
+      "parentId": "wrk_avera",
+      "name": "System (Sync & Seed)",
+      "description": "Rotas de sincronização e seed — protegidas por x-sync-key / x-seed-key"
+    },
+    {
+      "_id": "req_sync",
+      "_type": "request",
+      "parentId": "fld_system",
+      "name": "Sync DB",
+      "method": "POST",
+      "url": "{{ base_url }}/sync",
+      "headers": [
+        { "name": "x-sync-key", "value": "{{ sync_key }}" }
+      ],
+      "body": {}
+    },
+    {
+      "_id": "req_seed",
+      "_type": "request",
+      "parentId": "fld_system",
+      "name": "Seed Roles & Permissions",
+      "method": "POST",
+      "url": "{{ base_url }}/seed",
+      "headers": [
+        { "name": "x-seed-key", "value": "{{ sync_key }}" }
+      ],
+      "body": {}
+    },
+    {
+      "_id": "req_seed_admin",
+      "_type": "request",
+      "parentId": "fld_system",
+      "name": "Seed Admin (Staff)",
+      "method": "POST",
+      "url": "{{ base_url }}/seed/admin",
+      "headers": [
+        { "name": "x-seed-key", "value": "{{ sync_key }}" }
+      ],
+      "body": {}
+    },
+
+    {
+      "_id": "fld_auth",
+      "_type": "request_group",
+      "parentId": "wrk_avera",
+      "name": "Auth",
+      "description": "Autenticação de Staff (admin, employee, teacher)"
+    },
+    {
+      "_id": "req_auth_login",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Login",
+      "method": "POST",
+      "url": "{{ base_url }}/auth/login",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"admin@averact.com\",\n  \"password\": \"Admin@2025\"\n}"
+      }
+    },
+    {
+      "_id": "req_auth_refresh",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Refresh Token",
+      "method": "POST",
+      "url": "{{ base_url }}/auth/refresh",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"refreshToken\": \"{{ refresh_token }}\"\n}"
+      }
+    },
+    {
+      "_id": "req_auth_me",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Me (perfil logado)",
+      "method": "GET",
+      "url": "{{ base_url }}/auth/me",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ token }}" }
+      ],
+      "body": {}
+    },
+    {
+      "_id": "req_auth_request_reset",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Request Password Reset",
+      "method": "POST",
+      "url": "{{ base_url }}/auth/request-reset",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"admin@averact.com\"\n}"
+      }
+    },
+    {
+      "_id": "req_auth_reset_password",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Reset Password (via link)",
+      "method": "POST",
+      "url": "{{ base_url }}/auth/reset-password",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"token\": \"token-do-email\",\n  \"newPassword\": \"NovaSenha@123\"\n}"
+      }
+    },
+    {
+      "_id": "req_auth_change_password",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Change Password (autenticado)",
+      "method": "POST",
+      "url": "{{ base_url }}/auth/change-password",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ token }}" },
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"currentPassword\": \"Admin@2025\",\n  \"newPassword\": \"NovaSenha@123\"\n}"
+      }
+    },
+
+    {
+      "_id": "fld_staff",
+      "_type": "request_group",
+      "parentId": "wrk_avera",
+      "name": "Staff",
+      "description": "Funcionários e professores (admins do sistema)"
+    },
+    {
+      "_id": "req_staff_list",
+      "_type": "request",
+      "parentId": "fld_staff",
+      "name": "List Staff",
+      "method": "GET",
+      "url": "{{ base_url }}/staff?active=true&search=",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ token }}" }
+      ],
+      "body": {}
+    },
+    {
+      "_id": "req_staff_get",
+      "_type": "request",
+      "parentId": "fld_staff",
+      "name": "Get Staff by ID",
+      "method": "GET",
+      "url": "{{ base_url }}/staff/{{ staff_id }}",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ token }}" }
+      ],
+      "body": {}
+    },
+    {
+      "_id": "req_staff_create",
+      "_type": "request",
+      "parentId": "fld_staff",
+      "name": "Create Staff",
+      "method": "POST",
+      "url": "{{ base_url }}/staff",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ token }}" },
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Carlos Professor\",\n  \"email\": \"carlos@averact.com\",\n  \"password\": \"Carlos@123!\",\n  \"role\": \"teacher\",\n  \"phone\": \"11977777777\"\n}"
+      }
+    },
+    {
+      "_id": "req_staff_update",
+      "_type": "request",
+      "parentId": "fld_staff",
+      "name": "Update Staff",
+      "method": "PATCH",
+      "url": "{{ base_url }}/staff/{{ staff_id }}",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ token }}" },
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Carlos Professor Atualizado\",\n  \"phone\": \"11966666666\"\n}"
+      }
+    },
+    {
+      "_id": "req_staff_delete",
+      "_type": "request",
+      "parentId": "fld_staff",
+      "name": "Delete Staff (soft)",
+      "method": "DELETE",
+      "url": "{{ base_url }}/staff/{{ staff_id }}",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ token }}" }
+      ],
+      "body": {}
+    },
+
+    {
+      "_id": "fld_users",
+      "_type": "request_group",
+      "parentId": "wrk_avera",
+      "name": "Users (Alunos)",
+      "description": "Clientes/alunos da academia (sem login)"
+    },
+    {
+      "_id": "req_users_dropdown",
+      "_type": "request",
+      "parentId": "fld_users",
+      "name": "Dropdown (lista simplificada)",
+      "method": "GET",
+      "url": "{{ base_url }}/users/dropdown",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ token }}" }
+      ],
+      "body": {}
+    },
+    {
+      "_id": "req_users_list",
+      "_type": "request",
+      "parentId": "fld_users",
+      "name": "List Users",
+      "method": "GET",
+      "url": "{{ base_url }}/users?active=true&search=",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ token }}" }
+      ],
+      "body": {}
+    },
+    {
+      "_id": "req_users_get",
+      "_type": "request",
+      "parentId": "fld_users",
+      "name": "Get User by ID",
+      "method": "GET",
+      "url": "{{ base_url }}/users/{{ user_id }}",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ token }}" }
+      ],
+      "body": {}
+    },
+    {
+      "_id": "req_users_create",
+      "_type": "request",
+      "parentId": "fld_users",
+      "name": "Create User",
+      "method": "POST",
+      "url": "{{ base_url }}/users",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ token }}" },
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Maria Aluna\",\n  \"email\": \"maria@email.com\",\n  \"phone\": \"11999999999\",\n  \"document\": \"529.982.247-25\",\n  \"birthday\": \"1995-05-20\",\n  \"zipCode\": \"01310-100\",\n  \"state\": \"SP\",\n  \"city\": \"São Paulo\",\n  \"address\": \"Av. Paulista, 1000\"\n}"
+      }
+    },
+    {
+      "_id": "req_users_update",
+      "_type": "request",
+      "parentId": "fld_users",
+      "name": "Update User",
+      "method": "PATCH",
+      "url": "{{ base_url }}/users/{{ user_id }}",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ token }}" },
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Maria Aluna Atualizada\",\n  \"phone\": \"11988888888\"\n}"
+      }
+    },
+
+    {
+      "_id": "fld_credits",
+      "_type": "request_group",
+      "parentId": "wrk_avera",
+      "name": "Credits (Créditos de Usuários)",
+      "description": "Gestão de créditos dos alunos"
+    },
+    {
+      "_id": "req_credits_assign",
+      "_type": "request",
+      "parentId": "fld_credits",
+      "name": "Assign Credits (compra de produto)",
+      "method": "POST",
+      "url": "{{ base_url }}/users/{{ user_id }}/credits",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ token }}" },
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"productId\": {{ product_id }}\n}"
+      }
+    },
+    {
+      "_id": "req_credits_list",
+      "_type": "request",
+      "parentId": "fld_credits",
+      "name": "Get User Credits",
+      "method": "GET",
+      "url": "{{ base_url }}/users/{{ user_id }}/credits",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ token }}" }
+      ],
+      "body": {}
+    },
+    {
+      "_id": "req_credits_consume",
+      "_type": "request",
+      "parentId": "fld_credits",
+      "name": "Consume Credit",
+      "method": "POST",
+      "url": "{{ base_url }}/users/{{ user_id }}/credits/consume",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ token }}" },
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"referenceId\": \"aula-123\",\n  \"note\": \"Consumo referente à aula de musculação\"\n}"
+      }
+    },
+
+    {
+      "_id": "fld_product_types",
+      "_type": "request_group",
+      "parentId": "wrk_avera",
+      "name": "Product Types",
+      "description": "Categorias/tipos de produtos (ex: Musculação, CrossFit)"
+    },
+    {
+      "_id": "req_pt_list",
+      "_type": "request",
+      "parentId": "fld_product_types",
+      "name": "List Product Types",
+      "method": "GET",
+      "url": "{{ base_url }}/product-types",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ token }}" }
+      ],
+      "body": {}
+    },
+    {
+      "_id": "req_pt_create",
+      "_type": "request",
+      "parentId": "fld_product_types",
+      "name": "Create Product Type",
+      "method": "POST",
+      "url": "{{ base_url }}/product-types",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ token }}" },
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Musculação\",\n  \"color\": \"#FF5722\",\n  \"description\": \"Pacotes de musculação\",\n  \"active\": true\n}"
+      }
+    },
+    {
+      "_id": "req_pt_update",
+      "_type": "request",
+      "parentId": "fld_product_types",
+      "name": "Update Product Type",
+      "method": "PATCH",
+      "url": "{{ base_url }}/product-types/{{ product_type_id }}",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ token }}" },
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Musculação Premium\",\n  \"color\": \"#E64A19\"\n}"
+      }
+    },
+
+    {
+      "_id": "fld_products",
+      "_type": "request_group",
+      "parentId": "wrk_avera",
+      "name": "Products",
+      "description": "Pacotes/planos disponíveis para compra"
+    },
+    {
+      "_id": "req_products_list",
+      "_type": "request",
+      "parentId": "fld_products",
+      "name": "List Products",
+      "method": "GET",
+      "url": "{{ base_url }}/products",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ token }}" }
+      ],
+      "body": {}
+    },
+    {
+      "_id": "req_products_get",
+      "_type": "request",
+      "parentId": "fld_products",
+      "name": "Get Product by ID",
+      "method": "GET",
+      "url": "{{ base_url }}/products/{{ product_id }}",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ token }}" }
+      ],
+      "body": {}
+    },
+    {
+      "_id": "req_products_create",
+      "_type": "request",
+      "parentId": "fld_products",
+      "name": "Create Product",
+      "method": "POST",
+      "url": "{{ base_url }}/products",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ token }}" },
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"productTypeId\": {{ product_type_id }},\n  \"name\": \"Pacote 10 Aulas\",\n  \"description\": \"10 aulas de musculação com validade de 30 dias\",\n  \"credits\": 10,\n  \"value\": 150.00,\n  \"validityDays\": 30,\n  \"recurring\": false\n}"
+      }
+    },
+    {
+      "_id": "req_products_update",
+      "_type": "request",
+      "parentId": "fld_products",
+      "name": "Update Product",
+      "method": "PATCH",
+      "url": "{{ base_url }}/products/{{ product_id }}",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ token }}" },
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Pacote 10 Aulas (atualizado)\",\n  \"value\": 140.00,\n  \"active\": true\n}"
+      }
+    },
+
+    {
+      "_id": "fld_checkout",
+      "_type": "request_group",
+      "parentId": "wrk_avera",
+      "name": "Checkout",
+      "description": "Processamento de pagamentos via cartão, dinheiro e PIX"
+    },
+    {
+      "_id": "req_checkout_card",
+      "_type": "request",
+      "parentId": "fld_checkout",
+      "name": "Checkout — Cartão de Crédito",
+      "method": "POST",
+      "url": "{{ base_url }}/checkout/card",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ token }}" },
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"userId\": \"{{ user_id }}\",\n  \"products\": [\n    { \"productId\": \"{{ product_id }}\", \"quantity\": 1 }\n  ],\n  \"payment\": {\n    \"number\": \"4000000000000010\",\n    \"holder_name\": \"MARIA ALUNA\",\n    \"exp_month\": \"12\",\n    \"exp_year\": \"2030\",\n    \"cvv\": \"123\",\n    \"installments\": 1\n  },\n  \"billingAddress\": {\n    \"line_1\": \"Av. Paulista, 1000\",\n    \"zip_code\": \"01310100\",\n    \"city\": \"São Paulo\",\n    \"state\": \"SP\",\n    \"country\": \"BR\"\n  }\n}"
+      }
+    },
+    {
+      "_id": "req_checkout_cash",
+      "_type": "request",
+      "parentId": "fld_checkout",
+      "name": "Checkout — Dinheiro",
+      "method": "POST",
+      "url": "{{ base_url }}/checkout/cash",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ token }}" },
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"userId\": \"{{ user_id }}\",\n  \"products\": [\n    { \"productId\": \"{{ product_id }}\", \"quantity\": 1 }\n  ],\n  \"cash\": {\n    \"description\": \"Pagamento em dinheiro no balcão\",\n    \"confirm\": true\n  }\n}"
+      }
+    },
+    {
+      "_id": "req_checkout_pix",
+      "_type": "request",
+      "parentId": "fld_checkout",
+      "name": "Checkout — PIX",
+      "method": "POST",
+      "url": "{{ base_url }}/checkout/pix",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ token }}" },
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"userId\": \"{{ user_id }}\",\n  \"products\": [\n    { \"productId\": \"{{ product_id }}\", \"quantity\": 1 }\n  ],\n  \"pix\": {\n    \"expires_in\": 3600\n  }\n}"
+      }
+    },
+    {
+      "_id": "req_checkout_pix_webhook",
+      "_type": "request",
+      "parentId": "fld_checkout",
+      "name": "PIX Webhook (Pagar.me)",
+      "method": "POST",
+      "url": "{{ base_url }}/checkout/pix/webhook",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "x-hub-signature", "value": "sha1=assinatura-pagarme" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"type\": \"charge.paid\",\n  \"data\": {\n    \"id\": \"ch_xxxxxxxxxx\",\n    \"order\": {\n      \"id\": \"or_xxxxxxxxxx\"\n    }\n  }\n}"
+      }
+    }
+  ]
+}

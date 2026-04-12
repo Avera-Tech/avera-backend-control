@@ -7,7 +7,7 @@ import {
   getUserById,
   updateUser,
 } from '../controllers/userController';
-import { CreditController } from '../../../core/credits/controllers/CreditController';
+import { CreditController } from '../../../fit/credits/controllers/CreditController';
 
 const router = Router();
 

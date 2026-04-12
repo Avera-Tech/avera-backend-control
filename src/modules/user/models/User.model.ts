@@ -9,6 +9,7 @@ interface ClientUserAttributes {
   id: number;
   name: string;
   email: string;
+  password?: string | null;
   phone?: string | null;
   document?: string | null;
   birthday?: Date | null;
@@ -28,6 +29,7 @@ interface ClientUserCreationAttributes
   extends Optional<
     ClientUserAttributes,
     | 'id'
+    | 'password'
     | 'phone'
     | 'document'
     | 'birthday'
@@ -48,6 +50,7 @@ class ClientUser
   public id!: number;
   public name!: string;
   public email!: string;
+  public password!: string | null;
   public phone!: string | null;
   public document!: string | null;
   public birthday!: Date | null;
@@ -79,6 +82,10 @@ ClientUser.init(
       type: DataTypes.STRING(150),
       allowNull: false,
       unique: true,
+    },
+    password: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
     },
     phone: {
       type: DataTypes.STRING(20),
@@ -134,7 +141,7 @@ ClientUser.init(
   },
   {
     sequelize: coreDB,
-    tableName: 'clients',
+    tableName: 'users',
     timestamps: true,
     underscored: false,
     indexes: [{ unique: true, fields: ['email'] }],

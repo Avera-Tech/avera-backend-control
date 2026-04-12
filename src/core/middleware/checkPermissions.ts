@@ -5,31 +5,24 @@ import UserRole from '../rbac/models/UserRole.model';
 import RolePermission from '../rbac/models/RolePermission.model';
 import { Op } from 'sequelize';
 
-/**
- * Middleware para verificar se o usuário tem uma ou mais permissões específicas
- *
- * @param requiredPermissions - Array de slugs de permissões (ex: ['employees:create'])
- * @param requireAll - Se true, exige TODAS as permissões. Se false, exige pelo menos UMA.
- */
 export const checkPermissions = (
   requiredPermissions: string[],
   requireAll: boolean = true
 ) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
     try {
-      if (!req.user || !req.user.userId) {
+      if (!req.user?.staffId) {
         return res.status(401).json({
           success: false,
           error: 'Usuário não autenticado',
         });
       }
 
-      const userId = req.user.userId;
+      const { staffId } = req.user;
 
-      // Buscar roles do funcionário (ativas e não expiradas)
-      const userRoles = await UserRole.findAll({
+      const staffRoles = await UserRole.findAll({
         where: {
-          userId,
+          staffId,
           [Op.or]: [
             { expiresAt: { [Op.eq]: null } },
             { expiresAt: { [Op.gt]: new Date() } },
@@ -45,15 +38,14 @@ export const checkPermissions = (
         ],
       });
 
-      if (!userRoles || userRoles.length === 0) {
+      if (!staffRoles.length) {
         return res.status(403).json({
           success: false,
           error: 'Usuário sem roles atribuídas',
         });
       }
 
-      // Buscar permissões das roles
-      const roleIds = userRoles.map((ur) => ur.roleId);
+      const roleIds = staffRoles.map((sr) => sr.roleId);
 
       const rolePermissions = await RolePermission.findAll({
         where: { roleId: { [Op.in]: roleIds } },
@@ -69,13 +61,9 @@ export const checkPermissions = (
 
       const userPermissionSlugs = rolePermissions.map((rp: any) => rp.permission.slug);
 
-      // Verificar permissões
-      let hasPermission = false;
-      if (requireAll) {
-        hasPermission = requiredPermissions.every((p) => userPermissionSlugs.includes(p));
-      } else {
-        hasPermission = requiredPermissions.some((p) => userPermissionSlugs.includes(p));
-      }
+      const hasPermission = requireAll
+        ? requiredPermissions.every((p) => userPermissionSlugs.includes(p))
+        : requiredPermissions.some((p) => userPermissionSlugs.includes(p));
 
       if (!hasPermission) {
         return res.status(403).json({
@@ -100,30 +88,24 @@ export const checkPermissions = (
   };
 };
 
-/**
- * Middleware para verificar se o usuário tem uma ou mais roles específicas
- *
- * @param requiredRoles - Array de slugs de roles (ex: ['admin', 'manager'])
- * @param requireAll - Se true, exige TODAS as roles. Se false, exige pelo menos UMA.
- */
 export const checkRoles = (
   requiredRoles: string[],
   requireAll: boolean = false
 ) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
     try {
-      if (!req.user || !req.user.userId) {
+      if (!req.user?.staffId) {
         return res.status(401).json({
           success: false,
           error: 'Usuário não autenticado',
         });
       }
 
-      const userId = req.user.userId;
+      const { staffId } = req.user;
 
-      const userRoles = await UserRole.findAll({
+      const staffRoles = await UserRole.findAll({
         where: {
-          userId,
+          staffId,
           [Op.or]: [
             { expiresAt: { [Op.eq]: null } },
             { expiresAt: { [Op.gt]: new Date() } },
@@ -139,21 +121,18 @@ export const checkRoles = (
         ],
       });
 
-      if (!userRoles || userRoles.length === 0) {
+      if (!staffRoles.length) {
         return res.status(403).json({
           success: false,
           error: 'Usuário sem roles atribuídas',
         });
       }
 
-      const userRoleSlugs = userRoles.map((ur: any) => ur.role.slug);
+      const userRoleSlugs = staffRoles.map((sr: any) => sr.role.slug);
 
-      let hasRole = false;
-      if (requireAll) {
-        hasRole = requiredRoles.every((r) => userRoleSlugs.includes(r));
-      } else {
-        hasRole = requiredRoles.some((r) => userRoleSlugs.includes(r));
-      }
+      const hasRole = requireAll
+        ? requiredRoles.every((r) => userRoleSlugs.includes(r))
+        : requiredRoles.some((r) => userRoleSlugs.includes(r));
 
       if (!hasRole) {
         return res.status(403).json({

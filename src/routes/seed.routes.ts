@@ -3,8 +3,8 @@ import bcrypt from 'bcryptjs';
 import Role from '../core/rbac/models/Role.model';
 import Permission from '../core/rbac/models/Permission.model';
 import RolePermission from '../core/rbac/models/RolePermission.model';
-import User from '../core/users/models/User.model';
 import UserRole from '../core/rbac/models/UserRole.model';
+import Staff from '../core/staff/models/Staff.model';
 
 const router = Router();
 
@@ -60,11 +60,11 @@ router.post('/', async (req: Request, res: Response) => {
       { name: 'Editar staff', slug: 'staff:update', resource: 'staff', action: 'update', active: true },
       { name: 'Deletar staff', slug: 'staff:delete', resource: 'staff', action: 'delete', active: true },
       // Alunos
-      { name: 'Listar clientes', slug: 'clients:list', resource: 'clients', action: 'list', active: true },
-      { name: 'Ver cliente', slug: 'clients:read', resource: 'clients', action: 'read', active: true },
-      { name: 'Criar cliente', slug: 'clients:create', resource: 'clients', action: 'create', active: true },
-      { name: 'Editar cliente', slug: 'clients:update', resource: 'clients', action: 'update', active: true },
-      { name: 'Deletar cliente', slug: 'clients:delete', resource: 'clients', action: 'delete', active: true },
+      { name: 'Listar usuários', slug: 'users:list', resource: 'users', action: 'list', active: true },
+      { name: 'Ver usuário', slug: 'users:read', resource: 'users', action: 'read', active: true },
+      { name: 'Criar usuário', slug: 'users:create', resource: 'users', action: 'create', active: true },
+      { name: 'Editar usuário', slug: 'users:update', resource: 'users', action: 'update', active: true },
+      { name: 'Deletar usuário', slug: 'users:delete', resource: 'users', action: 'delete', active: true },
       // Aulas
       { name: 'Listar aulas', slug: 'classes:list', resource: 'classes', action: 'list', active: true },
       { name: 'Ver aula', slug: 'classes:read', resource: 'classes', action: 'read', active: true },
@@ -115,7 +115,7 @@ router.post('/', async (req: Request, res: Response) => {
       const employeeSlugs = [
         'users:list', 'users:read',
         'staff:list', 'staff:read', 'staff:create', 'staff:update', 'staff:delete',
-        'clients:list', 'clients:read', 'clients:create', 'clients:update', 'clients:delete',
+        'users:list', 'users:read', 'users:create', 'users:update', 'users:delete',
         'classes:list', 'classes:read', 'classes:create', 'classes:update', 'classes:delete',
         'financial:read', 'financial:manage',
         'reports:read', 'reports:export',
@@ -136,7 +136,7 @@ router.post('/', async (req: Request, res: Response) => {
     if (teacherRole) {
       const teacherSlugs = [
         'staff:list', 'staff:read',
-        'clients:list', 'clients:read',
+        'users:list', 'users:read',
         'classes:list', 'classes:read', 'classes:create', 'classes:update',
         'dashboard:read',
       ];
@@ -177,13 +177,13 @@ router.post('/admin', async (req: Request, res: Response) => {
   if (!guardSeedKey(req, res)) return;
 
   try {
-    const adminEmail = process.env.ADMIN_EMAIL || 'admin@averact.com';
+    const adminEmail    = process.env.ADMIN_EMAIL    || 'admin@averact.com';
     const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@2025';
-    const adminName = process.env.ADMIN_NAME || 'Administrador Avera';
+    const adminName     = process.env.ADMIN_NAME     || 'Administrador Avera';
 
-    // Verificar se já existe
-    const existing = await User.findOne({ where: { email: adminEmail } });
-    if (existing) {
+    // Verificar se já existe (checa pelo email no staff)
+    const existingStaff = await Staff.findOne({ where: { email: adminEmail } });
+    if (existingStaff) {
       return res.status(200).json({
         success: true,
         message: `Admin '${adminEmail}' já existe`,
@@ -199,9 +199,9 @@ router.post('/admin', async (req: Request, res: Response) => {
       });
     }
 
-    // Criar usuário
     const hashed = await bcrypt.hash(adminPassword, 12);
-    const user = await User.create({
+
+    const staff = await Staff.create({
       name: adminName,
       email: adminEmail,
       password: hashed,
@@ -209,13 +209,12 @@ router.post('/admin', async (req: Request, res: Response) => {
       emailVerified: true,
     });
 
-    // Atribuir role admin
-    await UserRole.create({ userId: user.id, roleId: adminRole.id });
+    await UserRole.create({ staffId: staff.id, roleId: adminRole.id });
 
     return res.status(201).json({
       success: true,
       message: 'Admin criado com sucesso',
-      user: { id: user.id, name: user.name, email: user.email },
+      staff: { id: staff.id, name: staff.name, email: staff.email },
       note: '⚠️ Altere a senha após o primeiro acesso',
     });
 

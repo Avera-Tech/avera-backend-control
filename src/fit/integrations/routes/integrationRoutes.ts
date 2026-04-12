@@ -69,6 +69,7 @@ router.post('/wellhub/checkin', async (req: Request, res: Response) => {
       console.error('[Wellhub Webhook] Erro no processamento:', err);
     });
 
+    return;
   } catch (err: any) {
     console.error('[Wellhub Webhook] Erro inesperado:', err);
     return res.status(500).json({ error: 'Erro interno' });

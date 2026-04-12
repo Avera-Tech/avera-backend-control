@@ -23,13 +23,16 @@ const createSchema = Joi.object({
     'any.required': 'Quantidade de créditos é obrigatória',
     'number.min': 'Deve ter no mínimo 1 crédito',
   }),
-  price: Joi.number().precision(2).min(0).required().messages({
-    'any.required': 'Preço é obrigatório',
-    'number.min': 'Preço não pode ser negativo',
+  value: Joi.number().precision(2).min(0).required().messages({
+    'any.required': 'Valor é obrigatório',
+    'number.min': 'Valor não pode ser negativo',
   }),
   validityDays: Joi.number().integer().min(1).required().messages({
     'any.required': 'Validade em dias é obrigatória',
     'number.min': 'Validade deve ser de no mínimo 1 dia',
+  }),
+  purchaseLimit: Joi.number().integer().min(1).allow(null).optional().messages({
+    'number.min': 'Limite de compras deve ser no mínimo 1',
   }),
   recurring: Joi.boolean().default(false),
   recurringInterval: Joi.when('recurring', {
@@ -50,8 +53,9 @@ const updateSchema = Joi.object({
   name: Joi.string().max(100).optional(),
   description: Joi.string().allow('', null).optional(),
   credits: Joi.number().integer().min(1).optional(),
-  price: Joi.number().precision(2).min(0).optional(),
+  value: Joi.number().precision(2).min(0).optional(),
   validityDays: Joi.number().integer().min(1).optional(),
+  purchaseLimit: Joi.number().integer().min(1).allow(null).optional(),
   recurring: Joi.boolean().optional(),
   recurringInterval: Joi.when('recurring', {
     is: true,
@@ -71,9 +75,9 @@ const updateSchema = Joi.object({
 
 // ─── Constantes de Paginação ──────────────────────────────────────────────────
 
-const DEFAULT_PAGE      = 1;
-const DEFAULT_PER_PAGE  = 20;
-const MAX_PER_PAGE      = 100;
+const DEFAULT_PAGE     = 1;
+const DEFAULT_PER_PAGE = 20;
+const MAX_PER_PAGE     = 100;
 
 // ─── Controller ───────────────────────────────────────────────────────────────
 
@@ -86,7 +90,6 @@ export class ProductController {
    */
   static async list(req: Request, res: Response): Promise<Response> {
     try {
-      // 1. Parsear e sanitizar paginação
       const page    = Math.max(1, parseInt(req.query.page    as string) || DEFAULT_PAGE);
       const perPage = Math.min(
         MAX_PER_PAGE,
@@ -94,7 +97,6 @@ export class ProductController {
       );
       const offset = (page - 1) * perPage;
 
-      // 2. Filtros opcionais
       const where: any = {};
       if (req.query.active !== undefined) {
         where.active = req.query.active === 'true';
@@ -103,7 +105,6 @@ export class ProductController {
         where.productTypeId = parseInt(req.query.productTypeId as string);
       }
 
-      // 3. Query paginada com include de productType
       const { count, rows: products } = await Product.findAndCountAll({
         where,
         limit: perPage,
@@ -155,8 +156,7 @@ export class ProductController {
         return res.status(404).json({ success: false, error: 'Produto não encontrado' });
       }
       return res.json({ success: true, product });
-    }
-    catch (error: any) {
+    } catch (error: any) {
       console.error('Erro ao buscar produto:', error);
       return res.status(500).json({
         success: false,
@@ -168,11 +168,9 @@ export class ProductController {
 
   /**
    * POST /products
-   * Cria pacote — se recurring = true, recurringInterval é obrigatório
    */
   static async create(req: Request, res: Response): Promise<Response> {
     try {
-      // 1. Validar body (Joi.when garante recurringInterval quando recurring = true)
       const { error, value } = createSchema.validate(req.body, { abortEarly: false });
       if (error) {
         return res.status(400).json({
@@ -182,11 +180,11 @@ export class ProductController {
       }
 
       const {
-        productTypeId, name, description, credits,
-        price, validityDays, recurring, recurringInterval, active,
-      } = value;
+        productTypeId, name, description,
+        credits, value: productValue, validityDays,
+        purchaseLimit, recurring, recurringInterval, active,
+      } = value as any;
 
-      // 2. Verificar se o productType existe e está ativo
       const productType = await ProductType.findOne({
         where: { id: productTypeId, active: true },
       });
@@ -197,20 +195,19 @@ export class ProductController {
         });
       }
 
-      // 3. Criar produto
       const product = await Product.create({
         productTypeId,
         name:              name.trim(),
         description:       description ?? null,
         credits,
-        price,
+        value:             productValue,
         validityDays,
+        purchaseLimit:     purchaseLimit ?? null,
         recurring,
         recurringInterval: recurring ? recurringInterval : null,
         active,
       });
 
-      // 4. Retornar com productType populado
       const result = await Product.findByPk(product.id, {
         include: [{ model: ProductType, as: 'productType', attributes: ['id', 'name', 'color'] }],
       });
@@ -232,13 +229,11 @@ export class ProductController {
 
   /**
    * PATCH /products/:id
-   * Atualiza pacote — product_type_id não pode ser alterado
    */
   static async update(req: Request, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
 
-      // 1. Bloquear tentativa de alterar productTypeId antes da validação Joi
       if ('productTypeId' in req.body) {
         return res.status(400).json({
           success: false,
@@ -246,7 +241,6 @@ export class ProductController {
         });
       }
 
-      // 2. Validar body
       const { error, value } = updateSchema.validate(req.body, { abortEarly: false });
       if (error) {
         return res.status(400).json({
@@ -255,38 +249,35 @@ export class ProductController {
         });
       }
 
-      // 3. Buscar produto
       const product = await Product.findByPk(Number(id));
       if (!product) {
-        return res.status(404).json({
-          success: false,
-          error: 'Produto não encontrado',
-        });
+        return res.status(404).json({ success: false, error: 'Produto não encontrado' });
       }
 
       const {
-        name, description, credits, price,
-        validityDays, recurring, recurringInterval, active,
+        name, description, credits, value: productValue,
+        validityDays, purchaseLimit, recurring, recurringInterval, active,
       } = value;
 
-      // 4. Aplicar mudanças — se recurring mudar para false, limpa o interval
-      if (name        !== undefined) product.name        = name.trim();
-      if (description !== undefined) product.description = description;
-      if (credits     !== undefined) product.credits     = credits;
-      if (price       !== undefined) product.price       = price;
-      if (validityDays !== undefined) product.validityDays = validityDays;
-      if (active      !== undefined) product.active      = active;
+      if (name          !== undefined) product.name          = name.trim();
+      if (description   !== undefined) product.description   = description;
+      if (credits        !== undefined) product.credits        = credits;
+      if (productValue  !== undefined) product.value         = productValue;
+      if (validityDays  !== undefined) product.validityDays  = validityDays;
+      if (purchaseLimit !== undefined) product.purchaseLimit = purchaseLimit;
+      if (active        !== undefined) product.active        = active;
 
       if (recurring !== undefined) {
         product.recurring = recurring;
-        product.recurringInterval = recurring ? (recurringInterval ?? product.recurringInterval) : null as any;
+        product.recurringInterval = recurring
+          ? (recurringInterval ?? product.recurringInterval)
+          : null as any;
       } else if (recurringInterval !== undefined) {
         product.recurringInterval = recurringInterval;
       }
 
       await product.save();
 
-      // 5. Retornar com productType populado
       const result = await Product.findByPk(product.id, {
         include: [{ model: ProductType, as: 'productType', attributes: ['id', 'name', 'color'] }],
       });

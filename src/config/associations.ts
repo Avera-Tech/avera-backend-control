@@ -1,4 +1,3 @@
-import User from '../core/users/models/User.model';
 import Staff from '../core/staff/models/Staff.model';
 import Role from '../core/rbac/models/Role.model';
 import Permission from '../core/rbac/models/Permission.model';
@@ -6,34 +5,31 @@ import UserRole from '../core/rbac/models/UserRole.model';
 import RolePermission from '../core/rbac/models/RolePermission.model';
 import Product from '../core/products/models/Product.model';
 import ProductType from '../core/products/models/ProductType.model';
-import StudentCredit from '../core/credits/models/StudentCredit.model';
-import CreditTransaction from '../core/credits/models/CreditTransaction.model';
+import StudentCredit from '../fit/credits/models/StudentCredit.model';
+import CreditTransaction from '../fit/credits/models/CreditTransaction.model';
 import ClientUser from '../modules/user/models/User.model';
 import UserLevel from '../modules/user/models/UserLevel.model';
 
 export const setupAssociations = (): void => {
-  // User <-> Role (Many-to-Many via UserRole)
-  User.belongsToMany(Role, {
+  // Staff <-> Role (Many-to-Many via staff_roles)
+  Staff.belongsToMany(Role, {
     through: UserRole,
-    foreignKey: 'userId',
+    foreignKey: 'staffId',
     otherKey: 'roleId',
     as: 'roles',
   });
 
-  Role.belongsToMany(User, {
+  Role.belongsToMany(Staff, {
     through: UserRole,
     foreignKey: 'roleId',
-    otherKey: 'userId',
-    as: 'users',
+    otherKey: 'staffId',
+    as: 'staff',
   });
 
-  UserRole.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+  UserRole.belongsTo(Staff, { foreignKey: 'staffId', as: 'staff' });
   UserRole.belongsTo(Role, { foreignKey: 'roleId', as: 'role' });
 
-  Staff.belongsTo(User, { foreignKey: 'userId', as: 'user' });
-  User.hasOne(Staff, { foreignKey: 'userId', as: 'staffProfile' });
-
-  // Role <-> Permission (Many-to-Many via RolePermission)
+  // Role <-> Permission (Many-to-Many via role_permissions)
   Role.belongsToMany(Permission, {
     through: RolePermission,
     foreignKey: 'roleId',
@@ -51,20 +47,23 @@ export const setupAssociations = (): void => {
   RolePermission.belongsTo(Role, { foreignKey: 'roleId', as: 'role' });
   RolePermission.belongsTo(Permission, { foreignKey: 'permissionId', as: 'permission' });
 
+  // Products
   ProductType.hasMany(Product, { foreignKey: 'productTypeId', as: 'products' });
   Product.belongsTo(ProductType, { foreignKey: 'productTypeId', as: 'productType' });
+
+  // Credits
   StudentCredit.belongsTo(Product, { foreignKey: 'productId', as: 'product' });
   StudentCredit.hasMany(CreditTransaction, { foreignKey: 'studentCreditId', as: 'transactions' });
   CreditTransaction.belongsTo(StudentCredit, { foreignKey: 'studentCreditId', as: 'credit' });
 
-  // ClientUser (clientes/alunos) <-> UserLevel
+  // ClientUser (alunos) <-> UserLevel
   ClientUser.belongsTo(UserLevel, { foreignKey: 'levelId', as: 'level' });
   UserLevel.hasMany(ClientUser, { foreignKey: 'levelId', as: 'users' });
 
   // ClientUser <-> créditos
-  ClientUser.hasMany(StudentCredit, { foreignKey: 'clientId', as: 'credits' });
-  StudentCredit.belongsTo(ClientUser, { foreignKey: 'clientId', as: 'client' });
-  CreditTransaction.belongsTo(ClientUser, { foreignKey: 'clientId', as: 'client' });
+  ClientUser.hasMany(StudentCredit, { foreignKey: 'userId', as: 'credits' });
+  StudentCredit.belongsTo(ClientUser, { foreignKey: 'userId', as: 'user' });
+  CreditTransaction.belongsTo(ClientUser, { foreignKey: 'userId', as: 'user' });
 
   console.log('✅ Associações configuradas');
 };

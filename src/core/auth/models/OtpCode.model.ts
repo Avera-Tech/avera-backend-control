@@ -3,8 +3,8 @@ import coreDB from '../../../config/database.core';
 
 interface OtpCodeAttributes {
   id: number;
-  userId: number;
-  purpose: 'signup' | 'reset_password';
+  staffId: number;
+  purpose: 'reset_password';
   codeHash: string;
   expiresAt: Date;
   attempts: number;
@@ -14,10 +14,13 @@ interface OtpCodeAttributes {
 
 interface OtpCodeCreationAttributes extends Optional<OtpCodeAttributes, 'id' | 'attempts'> {}
 
-class OtpCode extends Model<OtpCodeAttributes, OtpCodeCreationAttributes> implements OtpCodeAttributes {
+class OtpCode
+  extends Model<OtpCodeAttributes, OtpCodeCreationAttributes>
+  implements OtpCodeAttributes
+{
   public id!: number;
-  public userId!: number;
-  public purpose!: 'signup' | 'reset_password';
+  public staffId!: number;
+  public purpose!: 'reset_password';
   public codeHash!: string;
   public expiresAt!: Date;
   public attempts!: number;
@@ -33,14 +36,14 @@ OtpCode.init(
       autoIncrement: true,
       primaryKey: true,
     },
-    userId: {
+    staffId: {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
-      references: { model: 'users', key: 'id' },
+      references: { model: 'staff', key: 'id' },
       onDelete: 'CASCADE',
     },
     purpose: {
-      type: DataTypes.ENUM('signup', 'reset_password'),
+      type: DataTypes.ENUM('reset_password'),
       allowNull: false,
     },
     codeHash: {
@@ -63,7 +66,7 @@ OtpCode.init(
     timestamps: true,
     underscored: false,
     indexes: [
-      { fields: ['userId'] },
+      { fields: ['staffId'] },
       { fields: ['purpose'] },
     ],
   }

@@ -246,7 +246,7 @@ export class UserController {
 
       // 6. Atribuir role
       await UserRole.create({
-        userId: user.id,
+        staffId: user.id,
         roleId: role.id,
         assignedBy: (req as any).user?.userId ?? null,
       });
@@ -329,9 +329,9 @@ export class UserController {
         }
 
         // Remove roles antigas e atribui a nova
-        await UserRole.destroy({ where: { userId: user.id } });
+        await UserRole.destroy({ where: { staffId: user.id } });
         await UserRole.create({
-          userId: user.id,
+          staffId: user.id,
           roleId: newRole.id,
           assignedBy: (req as any).user?.userId ?? null,
         });

@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { Op } from 'sequelize';
 import ClientUser from '../models/User.model';
 import UserLevel from '../models/UserLevel.model';
-import StudentCredit from '../../../core/credits/models/StudentCredit.model';
+import StudentCredit from '../../../fit/credits/models/StudentCredit.model';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -124,7 +124,7 @@ export async function getUserById(req: Request, res: Response): Promise<Response
     }
 
     const credits = await StudentCredit.findAll({
-      where: { clientId: user.id, status: 'active' },
+      where: { userId: user.id, status: 'active' },
       attributes: ['availableCredits'],
     });
     const availableCredits = credits.reduce((sum, c) => sum + c.availableCredits, 0);

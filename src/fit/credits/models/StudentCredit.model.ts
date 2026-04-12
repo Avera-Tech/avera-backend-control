@@ -5,7 +5,7 @@ export type CreditStatus = 'active' | 'expired' | 'exhausted';
 
 interface StudentCreditAttributes {
   id: number;
-  clientId: number;
+  userId: number;
   productId: number;
   totalCredits: number;
   usedCredits: number;
@@ -24,7 +24,7 @@ class StudentCredit
   implements StudentCreditAttributes
 {
   public id!: number;
-  public clientId!: number;
+  public userId!: number;
   public productId!: number;
   public totalCredits!: number;
   public usedCredits!: number;
@@ -43,13 +43,12 @@ StudentCredit.init(
       autoIncrement: true,
       primaryKey: true,
     },
-    clientId: {
+    userId: {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
-      references: { model: 'clients', key: 'id' },
+      references: { model: 'users', key: 'id' },
       onDelete: 'CASCADE',
       onUpdate: 'CASCADE',
-      comment: 'FK para a tabela clients',
     },
     productId: {
       type: DataTypes.INTEGER.UNSIGNED,
@@ -57,47 +56,41 @@ StudentCredit.init(
       references: { model: 'products', key: 'id' },
       onDelete: 'RESTRICT',
       onUpdate: 'CASCADE',
-      comment: 'Produto que originou este lote — não permite excluir produto com lotes ativos',
     },
     totalCredits: {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
-      comment: 'Total de créditos concedidos na compra',
     },
     usedCredits: {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
       defaultValue: 0,
-      comment: 'Créditos já consumidos neste lote',
     },
     availableCredits: {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
-      comment: 'Créditos ainda disponíveis — totalCredits - usedCredits',
     },
     status: {
       type: DataTypes.ENUM('active', 'expired', 'exhausted'),
       allowNull: false,
       defaultValue: 'active',
-      comment: 'active = com saldo; exhausted = zerado; expired = vencido sem consumir tudo',
     },
     expiresAt: {
       type: DataTypes.DATE,
       allowNull: false,
-      comment: 'Data de expiração — calculada em createdAt + product.validityDays',
     },
   },
   {
     sequelize: coreDB,
-    tableName: 'student_credits',
+    tableName: 'user_credits',
     timestamps: true,
-    underscored: false,
+    underscored: true,
     indexes: [
-      { fields: ['clientId'],            name: 'idx_student_credits_client_id' },
-      { fields: ['productId'],          name: 'idx_student_credits_product_id' },
-      { fields: ['status'],             name: 'idx_student_credits_status' },
-      { fields: ['expiresAt'],          name: 'idx_student_credits_expires_at' },
-      { fields: ['clientId', 'status', 'expiresAt'],  name: 'idx_student_credits_fefo' },
+      { fields: ['user_id'],                          name: 'idx_user_credits_user_id' },
+      { fields: ['product_id'],                       name: 'idx_user_credits_product_id' },
+      { fields: ['status'],                           name: 'idx_user_credits_status' },
+      { fields: ['expires_at'],                       name: 'idx_user_credits_expires_at' },
+      { fields: ['user_id', 'status', 'expires_at'],  name: 'idx_user_credits_fefo' },
     ],
   }
 );

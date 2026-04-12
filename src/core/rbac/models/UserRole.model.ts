@@ -1,9 +1,9 @@
 import { Model, DataTypes, Optional } from 'sequelize';
 import coreDB from '../../../config/database.core';
 
-interface UserRoleAttributes {
+interface StaffRoleAttributes {
   id: number;
-  userId: number;
+  staffId: number;
   roleId: number;
   assignedAt?: Date;
   assignedBy?: number;
@@ -12,11 +12,17 @@ interface UserRoleAttributes {
   updatedAt?: Date;
 }
 
-interface UserRoleCreationAttributes extends Optional<UserRoleAttributes, 'id' | 'assignedAt' | 'assignedBy' | 'expiresAt'> {}
+interface StaffRoleCreationAttributes extends Optional<
+  StaffRoleAttributes,
+  'id' | 'assignedAt' | 'assignedBy' | 'expiresAt'
+> {}
 
-class UserRole extends Model<UserRoleAttributes, UserRoleCreationAttributes> implements UserRoleAttributes {
+class UserRole
+  extends Model<StaffRoleAttributes, StaffRoleCreationAttributes>
+  implements StaffRoleAttributes
+{
   public id!: number;
-  public userId!: number;
+  public staffId!: number;
   public roleId!: number;
   public assignedAt!: Date;
   public assignedBy!: number;
@@ -33,23 +39,17 @@ UserRole.init(
       autoIncrement: true,
       primaryKey: true,
     },
-    userId: {
+    staffId: {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
-      references: {
-        model: 'users',
-        key: 'id',
-      },
+      references: { model: 'staff', key: 'id' },
       onDelete: 'CASCADE',
       onUpdate: 'CASCADE',
     },
     roleId: {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
-      references: {
-        model: 'roles',
-        key: 'id',
-      },
+      references: { model: 'roles', key: 'id' },
       onDelete: 'CASCADE',
       onUpdate: 'CASCADE',
     },
@@ -61,30 +61,21 @@ UserRole.init(
     assignedBy: {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: true,
-      comment: 'ID do usuário que atribuiu esta role',
     },
     expiresAt: {
       type: DataTypes.DATE,
       allowNull: true,
-      comment: 'Data de expiração da role (opcional)',
     },
   },
   {
     sequelize: coreDB,
-    tableName: 'user_roles',
+    tableName: 'staff_roles',
     timestamps: true,
     underscored: false,
     indexes: [
-      {
-        unique: true,
-        fields: ['userId', 'roleId'],
-      },
-      {
-        fields: ['userId'],
-      },
-      {
-        fields: ['roleId'],
-      },
+      { unique: true, fields: ['staffId', 'roleId'] },
+      { fields: ['staffId'] },
+      { fields: ['roleId'] },
     ],
   }
 );
