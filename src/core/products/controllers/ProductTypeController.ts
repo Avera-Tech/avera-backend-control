@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { Op } from 'sequelize';
 import Joi from 'joi';
 import ProductType from '../models/ProductType.model';
+import Place from '../../places/models/Place.model';
 
 // ─── Schemas de Validação ─────────────────────────────────────────────────────
 
@@ -33,6 +34,32 @@ const updateSchema = Joi.object({
 // ─── Controller ───────────────────────────────────────────────────────────────
 
 export class ProductTypeController {
+
+  static async dropdown(_req: Request, res: Response): Promise<Response> {
+    try {
+      const productTypes = await ProductType.findAll({
+        where: { active: true },
+        attributes: ['id', 'name', 'color', 'icon'],
+        include: [{
+          model: Place,
+          as: 'places',
+          attributes: ['id', 'name'],
+          through: { attributes: [] },
+          where: { active: true },
+          required: false,
+        }],
+        order: [['name', 'ASC']],
+      });
+
+      return res.status(200).json({ success: true, productTypes });
+    } catch (error: any) {
+      console.error('Erro ao buscar tipos de produto para dropdown:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Erro ao buscar Tipos de Produtos',
+      });
+    }
+  }
 
   static async list(_req: Request, res: Response): Promise<Response> {
     try {

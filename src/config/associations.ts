@@ -5,6 +5,8 @@ import UserRole from '../core/rbac/models/UserRole.model';
 import RolePermission from '../core/rbac/models/RolePermission.model';
 import Product from '../core/products/models/Product.model';
 import ProductType from '../core/products/models/ProductType.model';
+import Place from '../core/places/models/Place.model';
+import ProductTypePlace from '../core/places/models/ProductTypePlace.model';
 import StudentCredit from '../fit/credits/models/StudentCredit.model';
 import CreditTransaction from '../fit/credits/models/CreditTransaction.model';
 import ClientUser from '../modules/user/models/User.model';
@@ -50,6 +52,20 @@ export const setupAssociations = (): void => {
   // Products
   ProductType.hasMany(Product, { foreignKey: 'productTypeId', as: 'products' });
   Product.belongsTo(ProductType, { foreignKey: 'productTypeId', as: 'productType' });
+
+  // ProductType <-> Place (Many-to-Many via product_type_places)
+  ProductType.belongsToMany(Place, {
+    through: ProductTypePlace,
+    foreignKey: 'productTypeId',
+    otherKey: 'placeId',
+    as: 'places',
+  });
+  Place.belongsToMany(ProductType, {
+    through: ProductTypePlace,
+    foreignKey: 'placeId',
+    otherKey: 'productTypeId',
+    as: 'productTypes',
+  });
 
   // Credits
   StudentCredit.belongsTo(Product, { foreignKey: 'productId', as: 'product' });

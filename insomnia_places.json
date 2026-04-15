@@ -1,0 +1,85 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-04-14T00:00:00.000Z",
+  "__export_source": "avera-backend-node",
+  "resources": [
+    {
+      "_id": "wrk_places",
+      "_type": "workspace",
+      "parentId": null,
+      "name": "Places",
+      "description": "Locais físicos / unidades",
+      "scope": "collection"
+    },
+
+    {
+      "_id": "env_places_local",
+      "_type": "environment",
+      "parentId": "wrk_places",
+      "name": "Local",
+      "data": {
+        "base_url": "http://localhost:3000/api",
+        "token": "",
+        "place_id": "1"
+      },
+      "color": "#4CAF50",
+      "isPrivate": false
+    },
+
+    {
+      "_id": "fld_places",
+      "_type": "request_group",
+      "parentId": "wrk_places",
+      "name": "Places",
+      "description": "Locais físicos / unidades"
+    },
+
+    {
+      "_id": "req_places_list",
+      "_type": "request",
+      "parentId": "fld_places",
+      "name": "List Places",
+      "method": "GET",
+      "url": "{{ base_url }}/places",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ token }}" }
+      ],
+      "body": {}
+    },
+
+    {
+      "_id": "req_places_create",
+      "_type": "request",
+      "parentId": "fld_places",
+      "name": "Create Place",
+      "method": "POST",
+      "url": "{{ base_url }}/places",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ token }}" },
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Unidade Centro\",\n  \"address\": \"Rua Exemplo, 123\",\n  \"active\": true\n}"
+      }
+    },
+
+    {
+      "_id": "req_places_update",
+      "_type": "request",
+      "parentId": "fld_places",
+      "name": "Update Place",
+      "method": "PATCH",
+      "url": "{{ base_url }}/places/{{ place_id }}",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ token }}" },
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Unidade Norte\",\n  \"address\": \"Av. Nova, 456\",\n  \"active\": true\n}"
+      }
+    }
+  ]
+}

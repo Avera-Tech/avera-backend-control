@@ -99,9 +99,16 @@ app.get('/', (_req: Request, res: Response) => {
       },
 
       productTypes: {
+        dropdown: 'GET /api/product-types/dropdown',
         list: 'GET /api/product-types',
         create: 'POST /api/product-types',
         update: 'PATCH /api/product-types/:id',
+      },
+
+      places: {
+        list: 'GET /api/places',
+        create: 'POST /api/places',
+        update: 'PATCH /api/places/:id',
       },
 
       products: {

@@ -6,6 +6,12 @@ import { ProductTypeController } from '../core/products/controllers/ProductTypeC
 const router = Router();
 
 router.get(
+  '/dropdown',
+  authenticateToken,
+  ProductTypeController.dropdown
+);
+
+router.get(
   '/',
   authenticateToken,
   checkPermissions(['products:list']),
