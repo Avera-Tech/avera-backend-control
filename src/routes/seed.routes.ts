@@ -83,6 +83,7 @@ router.post('/', async (req: Request, res: Response) => {
       { name: 'Listar tipos de produto', slug: 'products:list', resource: 'products', action: 'list', active: true },
       { name: 'Criar tipo de produto', slug: 'products:create', resource: 'products', action: 'create', active: true },
       { name: 'Editar tipo de produto', slug: 'products:update', resource: 'products', action: 'update', active: true },
+      { name: 'Deletar produto', slug: 'products:delete', resource: 'products', action: 'delete', active: true },
       // Locais (Places)
       { name: 'Listar locais', slug: 'places:list', resource: 'places', action: 'list', active: true },
       { name: 'Criar local', slug: 'places:create', resource: 'places', action: 'create', active: true },

@@ -116,6 +116,7 @@ app.get('/', (_req: Request, res: Response) => {
         getById: 'GET /api/products/:id',
         create: 'POST /api/products',
         update: 'PATCH /api/products/:id',
+        remove: 'DELETE /api/products/:id',
       },
 
       staff: {
