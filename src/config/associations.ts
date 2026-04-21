@@ -11,6 +11,9 @@ import StudentCredit from '../fit/credits/models/StudentCredit.model';
 import CreditTransaction from '../fit/credits/models/CreditTransaction.model';
 import ClientUser from '../modules/user/models/User.model';
 import UserLevel from '../modules/user/models/UserLevel.model';
+import Class from '../modules/class/models/Class.model';
+import ClassStudent from '../modules/class/models/ClassStudent.model';
+import WaitingList from '../modules/class/models/WaitingList.model';
 
 export const setupAssociations = (): void => {
   // Staff <-> Role (Many-to-Many via staff_roles)
@@ -80,6 +83,22 @@ export const setupAssociations = (): void => {
   ClientUser.hasMany(StudentCredit, { foreignKey: 'userId', as: 'credits' });
   StudentCredit.belongsTo(ClientUser, { foreignKey: 'userId', as: 'user' });
   CreditTransaction.belongsTo(ClientUser, { foreignKey: 'userId', as: 'user' });
+
+  // Classes
+  Class.belongsTo(Staff, { foreignKey: 'staff_id', as: 'teacher' });
+  Staff.hasMany(Class, { foreignKey: 'staff_id', as: 'classes' });
+  Class.belongsTo(ProductType, { foreignKey: 'product_type_id', as: 'productType' });
+  Class.belongsTo(Place, { foreignKey: 'place_id', as: 'place' });
+  Class.hasMany(ClassStudent, { foreignKey: 'class_id', as: 'enrollments' });
+  ClassStudent.belongsTo(Class, { foreignKey: 'class_id', as: 'class' });
+  ClassStudent.belongsTo(ClientUser, { foreignKey: 'user_id', as: 'student' });
+  ClientUser.hasMany(ClassStudent, { foreignKey: 'user_id', as: 'enrollments' });
+
+  // WaitingList
+  WaitingList.belongsTo(Class, { foreignKey: 'class_id', as: 'class' });
+  WaitingList.belongsTo(ClientUser, { foreignKey: 'user_id', as: 'student' });
+  Class.hasMany(WaitingList, { foreignKey: 'class_id', as: 'waitingList' });
+  ClientUser.hasMany(WaitingList, { foreignKey: 'user_id', as: 'waitingEntries' });
 
   console.log('✅ Associações configuradas');
 };
