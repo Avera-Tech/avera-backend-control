@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
+import { randomBytes, randomUUID } from 'crypto';
 import { Op } from 'sequelize';
 import coreDB from '../../../config/database.core';
 import Staff from '../../../core/staff/models/Staff.model';
@@ -93,7 +94,9 @@ export async function listStaff(req: Request, res: Response): Promise<Response> 
     const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
     const offset = (page - 1) * limit;
 
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = {
+      email: { [Op.notLike]: '%@removed.invalid' },
+    };
     if (req.query.active !== undefined) {
       where.active = req.query.active === 'true';
     }
@@ -198,18 +201,27 @@ export async function deactivateStaff(req: Request, res: Response): Promise<Resp
     if (!staff) {
       return res.status(404).json({ success: false, message: 'Funcionário não encontrado' });
     }
-    if (!staff.active) {
-      return res.status(400).json({ success: false, message: 'Funcionário já está inativo' });
-    }
+    
+    const saltRounds = Number(process.env.BCRYPT_ROUNDS) || 10;
+    const anonymousPassword = await bcrypt.hash(randomBytes(32).toString('hex'), saltRounds);
 
-    await staff.update({ active: false });
+    await staff.update({
+      active: false,
+      name: 'Removido',
+      email: `removed-${randomUUID()}@removed.invalid`,
+      password: anonymousPassword,
+      phone: null,
+      employeeLevel: null,
+      emailVerified: false,
+      lastLogin: null,
+    });
 
     return res.json({
       success: true,
-      message: `Funcionário '${staff.name}' desativado com sucesso`,
+      message: 'Funcionário removido com sucesso',
     });
   } catch (err: unknown) {
     console.error('deactivateStaff error:', err);
-    return res.status(500).json({ success: false, message: 'Erro ao desativar funcionário' });
+    return res.status(500).json({ success: false, message: 'Erro ao remover funcionário' });
   }
 }
