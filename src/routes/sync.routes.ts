@@ -10,6 +10,7 @@ import ProductType     from '../core/products/models/ProductType.model';
 import Product         from '../core/products/models/Product.model';
 import UserLevel       from '../modules/user/models/UserLevel.model';
 import ClientUser      from '../modules/user/models/User.model';
+import UserGuardian    from '../modules/user/models/UserGuardian.model';
 import StudentCredit   from '../fit/credits/models/StudentCredit.model';
 import CreditTransaction from '../fit/credits/models/CreditTransaction.model';
 
@@ -39,6 +40,7 @@ router.post('/', async (req: Request, res: Response) => {
     { name: 'products',           model: Product },
     { name: 'user_levels',        model: UserLevel },
     { name: 'users',              model: ClientUser },
+    { name: 'user_guardians',     model: UserGuardian },
     { name: 'user_credits',       model: StudentCredit },
     { name: 'credit_transactions', model: CreditTransaction },
   ];

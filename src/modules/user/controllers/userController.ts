@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
+import { randomUUID } from 'crypto';
 import { Op } from 'sequelize';
 import ClientUser from '../models/User.model';
 import UserLevel from '../models/UserLevel.model';
+import UserGuardian from '../models/UserGuardian.model';
 import StudentCredit from '../../../fit/credits/models/StudentCredit.model';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -9,10 +11,18 @@ import StudentCredit from '../../../fit/credits/models/StudentCredit.model';
 const levelAttributes = ['id', 'name', 'color'];
 
 function withLevel() {
+  return { model: UserLevel, as: 'level', attributes: levelAttributes };
+}
+
+function withGuardians() {
   return {
-    model: UserLevel,
-    as: 'level',
-    attributes: levelAttributes,
+    model: UserGuardian,
+    as: 'guardians',
+    include: [{
+      model: ClientUser,
+      as: 'guardianUser',
+      attributes: ['id', 'name', 'email', 'phone'],
+    }],
   };
 }
 
@@ -20,7 +30,7 @@ function withLevel() {
 
 export async function createUser(req: Request, res: Response): Promise<Response> {
   try {
-    const { name, email, phone, document, birthday, height, weight, levelId, address, city, state, zipCode } = req.body;
+    const { name, email, phone, document, birthday, height, weight, levelId, address, city, state, zipCode, guardian } = req.body;
 
     if (!name || !email) {
       return res.status(400).json({ success: false, message: 'name e email são obrigatórios' });
@@ -48,7 +58,17 @@ export async function createUser(req: Request, res: Response): Promise<Response>
       zipCode: zipCode ?? null,
     });
 
-    const data = await ClientUser.findByPk(user.id, { include: [withLevel()] });
+    if (guardian && (guardian.guardianUserId || guardian.name)) {
+      await UserGuardian.create({
+        studentId: user.id,
+        guardianUserId: guardian.guardianUserId ? Number(guardian.guardianUserId) : null,
+        name: guardian.name ?? null,
+        phone: guardian.phone ?? null,
+        document: guardian.document ?? null,
+      });
+    }
+
+    const data = await ClientUser.findByPk(user.id, { include: [withLevel(), withGuardians()] });
 
     return res.status(201).json({ success: true, data, message: 'Cliente criado com sucesso' });
   } catch (err: unknown) {
@@ -69,7 +89,9 @@ export async function listUsers(req: Request, res: Response): Promise<Response> 
     const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
     const offset = (page - 1) * limit;
 
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = {
+      email: { [Op.notLike]: '%@removed.invalid' },
+    };
 
     if (req.query.active !== undefined) {
       where.active = req.query.active === 'true';
@@ -123,6 +145,11 @@ export async function getUserById(req: Request, res: Response): Promise<Response
       return res.status(404).json({ success: false, message: 'Cliente não encontrado' });
     }
 
+    const guardian = await UserGuardian.findOne({
+      where: { studentId: user.id },
+      attributes: ['id', 'studentId', 'guardianUserId', 'name', 'phone', 'document'],
+    });
+
     const credits = await StudentCredit.findAll({
       where: { userId: user.id, status: 'active' },
       attributes: ['availableCredits'],
@@ -131,7 +158,7 @@ export async function getUserById(req: Request, res: Response): Promise<Response
 
     return res.json({
       success: true,
-      data: { ...user.toJSON(), availableCredits },
+      data: { ...user.toJSON(), guardian: guardian ?? null, availableCredits },
     });
   } catch (err: unknown) {
     console.error('getUserById error:', err);
@@ -157,18 +184,93 @@ export async function updateUser(req: Request, res: Response): Promise<Response>
       }
     }
 
-    if (Object.keys(updates).length === 0) {
+    if (Object.keys(updates).length === 0 && !('guardian' in req.body)) {
       return res.status(400).json({ success: false, message: 'Informe ao menos um campo para atualizar' });
     }
 
-    await user.update(updates);
+    if (Object.keys(updates).length > 0) {
+      await user.update(updates);
+    }
 
-    const data = await ClientUser.findByPk(user.id, { include: [withLevel()] });
+    if ('guardian' in req.body) {
+      const g = req.body.guardian;
+      if (g === null) {
+        await UserGuardian.destroy({ where: { studentId: user.id } });
+      } else if (g.guardianUserId || g.name) {
+        const existing = await UserGuardian.findOne({ where: { studentId: user.id } });
+        if (existing) {
+          await existing.update({
+            guardianUserId: g.guardianUserId ? Number(g.guardianUserId) : null,
+            name: g.name ?? null,
+            phone: g.phone ?? null,
+            document: g.document ?? null,
+          });
+        } else {
+          await UserGuardian.create({
+            studentId: user.id,
+            guardianUserId: g.guardianUserId ? Number(g.guardianUserId) : null,
+            name: g.name ?? null,
+            phone: g.phone ?? null,
+            document: g.document ?? null,
+          });
+        }
+      }
+    }
+
+    const data = await ClientUser.findByPk(user.id, { include: [withLevel(), withGuardians()] });
 
     return res.json({ success: true, data, message: 'Cliente atualizado com sucesso' });
   } catch (err: unknown) {
     console.error('updateUser error:', err);
     return res.status(500).json({ success: false, message: 'Erro ao atualizar cliente' });
+  }
+}
+
+// ─── deleteUser ───────────────────────────────────────────────────────────────
+
+export async function deleteUser(req: Request, res: Response): Promise<Response> {
+  try {
+    const user = await ClientUser.findByPk(Number(req.params.id));
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Cliente não encontrado' });
+    }
+
+    await UserGuardian.destroy({ where: { studentId: user.id } });
+
+    await user.update({
+      active: false,
+      name: 'Removido',
+      email: `removed-${randomUUID()}@removed.invalid`,
+      phone: null,
+      document: null,
+      birthday: null,
+      address: null,
+      city: null,
+      state: null,
+      zipCode: null,
+    });
+
+    return res.json({ success: true, message: 'Aluno removido com sucesso' });
+  } catch (err: unknown) {
+    console.error('deleteUser error:', err);
+    return res.status(500).json({ success: false, message: 'Erro ao remover aluno' });
+  }
+}
+
+// ─── listLevels ───────────────────────────────────────────────────────────────
+
+export async function listLevels(_req: Request, res: Response): Promise<Response> {
+  try {
+    const levels = await UserLevel.findAll({
+      where: { active: true },
+      attributes: ['id', 'name', 'color', 'numberOfClasses'],
+      order: [['id', 'ASC']],
+    });
+
+    return res.json({ success: true, data: levels });
+  } catch (err: unknown) {
+    console.error('listLevels error:', err);
+    return res.status(500).json({ success: false, message: 'Erro ao listar níveis' });
   }
 }
 
