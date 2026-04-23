@@ -5,6 +5,7 @@ import Permission from '../core/rbac/models/Permission.model';
 import RolePermission from '../core/rbac/models/RolePermission.model';
 import UserRole from '../core/rbac/models/UserRole.model';
 import Staff from '../core/staff/models/Staff.model';
+import UserLevel from '../modules/user/models/UserLevel.model';
 
 const router = Router();
 
@@ -228,6 +229,43 @@ router.post('/admin', async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       error: 'Erro ao criar admin',
+      message: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/seed/levels
+// Insere os níveis padrão de alunos
+// Header: x-seed-key: <SYNC_SECRET_KEY>
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/levels', async (req: Request, res: Response) => {
+  if (!guardSeedKey(req, res)) return;
+
+  const levelsData = [
+    { name: 'Iniciante',     color: '#4ADE80', active: true },
+    { name: 'Intermediário', color: '#FACC15', active: true },
+    { name: 'Avançado',      color: '#F97316', active: true },
+    { name: 'Competitivo',   color: '#EF4444', active: true },
+  ];
+
+  try {
+    const results: string[] = [];
+
+    for (const level of levelsData) {
+      const [, created] = await UserLevel.findOrCreate({
+        where: { name: level.name },
+        defaults: level,
+      });
+      results.push(`${created ? '✅ criado' : '⏭️  já existe'}: ${level.name}`);
+    }
+
+    return res.status(201).json({ success: true, results });
+  } catch (error: any) {
+    console.error('Erro no seed de níveis:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Erro ao inserir níveis',
       message: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }

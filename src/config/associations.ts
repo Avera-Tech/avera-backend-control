@@ -11,6 +11,7 @@ import StudentCredit from '../fit/credits/models/StudentCredit.model';
 import CreditTransaction from '../fit/credits/models/CreditTransaction.model';
 import ClientUser from '../modules/user/models/User.model';
 import UserLevel from '../modules/user/models/UserLevel.model';
+import UserGuardian from '../modules/user/models/UserGuardian.model';
 import Class from '../modules/class/models/Class.model';
 import ClassStudent from '../modules/class/models/ClassStudent.model';
 import WaitingList from '../modules/class/models/WaitingList.model';
@@ -78,6 +79,12 @@ export const setupAssociations = (): void => {
   // ClientUser (alunos) <-> UserLevel
   ClientUser.belongsTo(UserLevel, { foreignKey: 'levelId', as: 'level' });
   UserLevel.hasMany(ClientUser, { foreignKey: 'levelId', as: 'users' });
+
+  // ClientUser <-> UserGuardian
+  ClientUser.hasMany(UserGuardian, { foreignKey: 'studentId', as: 'guardians' });
+  UserGuardian.belongsTo(ClientUser, { foreignKey: 'studentId', as: 'student' });
+  ClientUser.hasMany(UserGuardian, { foreignKey: 'guardianUserId', as: 'guardianOf' });
+  UserGuardian.belongsTo(ClientUser, { foreignKey: 'guardianUserId', as: 'guardianUser' });
 
   // ClientUser <-> créditos
   ClientUser.hasMany(StudentCredit, { foreignKey: 'userId', as: 'credits' });
