@@ -1,0 +1,47 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Criar .env remoto
+        run: |
+          ssh -i ~/.ssh/id_rsa root@${{ secrets.VPS_HOST }} "cat > /www/wwwroot/backend-control/.env << 'EOF'
+          NODE_ENV=production
+          PORT=3000
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          DB_CORE_HOST=localhost
+          DB_CORE_NAME=core_db
+          DB_CORE_USER=${{ secrets.DB_USER }}
+          DB_CORE_PASS=${{ secrets.DB_PASS }}
+          DB_MASTER_HOST=localhost
+          DB_MASTER_NAME=master_db
+          DB_MASTER_USER=${{ secrets.DB_USER }}
+          DB_MASTER_PASS=${{ secrets.DB_PASS }}
+          EOF"
+
+      - name: Deploy e restart via PM2
+        run: |
+          ssh -i ~/.ssh/id_rsa root@${{ secrets.VPS_HOST }} << 'EOF'
+            cd /www/wwwroot/backend-control
+            git pull origin master
+            npm install
+            npm run build
+            pm2 restart backend-control || pm2 start dist/index.js --name backend-control
+            pm2 save
+          EOF
