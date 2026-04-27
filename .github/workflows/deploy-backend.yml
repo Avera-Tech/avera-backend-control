@@ -23,7 +23,7 @@ jobs:
 
       - name: Criar .env remoto
         run: |
-          ssh -i ~/.ssh/github_deploy -o StrictHostKeyChecking=no root@${{ secrets.VPS_HOST }} "cat <<EOF > /www/wwwroot/backend-control/.env
+          ssh -i ~/.ssh/github_deploy -o StrictHostKeyChecking=no root@${{ secrets.VPS_HOST }} "mkdir -p /www/wwwroot/backend-control && cat <<EOF > /www/wwwroot/backend-control/.env
             NODE_ENV=production
             PORT=3000
             JWT_SECRET=${{ secrets.JWT_SECRET }}
