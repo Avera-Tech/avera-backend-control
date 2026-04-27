@@ -38,6 +38,9 @@ jobs:
       - name: Deploy
         run: |
           ssh -i ~/.ssh/id_rsa root@${{ secrets.VPS_HOST }} << 'EOF'
+            if [ ! -d /www/wwwroot/backend-control/.git ]; then
+              git clone https://github.com/Avera-Tech/avera-backend-control.git /www/wwwroot/backend-control
+            fi
             cd /www/wwwroot/backend-control
             git pull origin master
             npm install
