@@ -35,13 +35,11 @@ jobs:
           DB_MASTER_PASS=${{ secrets.DB_PASS }}
           EOF"
 
-      - name: Deploy e restart via PM2
+      - name: Deploy
         run: |
           ssh -i ~/.ssh/id_rsa root@${{ secrets.VPS_HOST }} << 'EOF'
             cd /www/wwwroot/backend-control
             git pull origin master
             npm install
             npm run build
-            pm2 restart backend-control || pm2 start dist/index.js --name backend-control
-            pm2 save
           EOF
