@@ -41,6 +41,7 @@ jobs:
         run: |
           ssh -i ~/.ssh/github_deploy -o StrictHostKeyChecking=no root@${{ secrets.VPS_HOST }} << 'EOF'
             if [ ! -d "/www/wwwroot/backend-control/.git" ]; then
+              rm -rf /www/wwwroot/backend-control
               git clone git@github.com:Avera-Tech/avera-backend-control.git /www/wwwroot/backend-control
             fi
             cd /www/wwwroot/backend-control
