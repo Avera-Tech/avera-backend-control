@@ -1,55 +1,53 @@
-name: Deploy Backend
+name: Deploy Backend (production)
 
 on:
   push:
     branches: [master]
 
 jobs:
-  deploy:
+  backend:
+    name: Deploy Backend to VPS
     runs-on: ubuntu-latest
+    environment: production
 
     steps:
-      - name: Checkout
+      - name: Checkout repo
         uses: actions/checkout@v3
-
-      - name: Setup Node
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-
-      - name: Build
-        run: |
-          npm install
-          npm run build
 
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          printf '%s' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/github_deploy
+          chmod 600 ~/.ssh/github_deploy
           ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
 
       - name: Criar .env remoto
         run: |
-          ssh -i ~/.ssh/id_rsa root@${{ secrets.VPS_HOST }} "mkdir -p /www/wwwroot/backend-control && cat > /www/wwwroot/backend-control/.env << 'EOF'
-          NODE_ENV=production
-          PORT=3000
-          JWT_SECRET=${{ secrets.JWT_SECRET }}
-          DB_CORE_HOST=localhost
-          DB_CORE_NAME=core_db
-          DB_CORE_USER=${{ secrets.DB_USER }}
-          DB_CORE_PASS=${{ secrets.DB_PASS }}
-          DB_MASTER_HOST=localhost
-          DB_MASTER_NAME=master_db
-          DB_MASTER_USER=${{ secrets.DB_USER }}
-          DB_MASTER_PASS=${{ secrets.DB_PASS }}
+          ssh -i ~/.ssh/github_deploy -o StrictHostKeyChecking=no root@${{ secrets.VPS_HOST }} "cat <<EOF > /www/wwwroot/backend-control/.env
+            NODE_ENV=production
+            PORT=3000
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            DB_CORE_HOST=localhost
+            DB_CORE_NAME=core_db
+            DB_CORE_USER=${{ secrets.DB_USER }}
+            DB_CORE_PASS=${{ secrets.DB_PASS }}
+            DB_MASTER_HOST=localhost
+            DB_MASTER_NAME=master_db
+            DB_MASTER_USER=${{ secrets.DB_USER }}
+            DB_MASTER_PASS=${{ secrets.DB_PASS }}
           EOF"
 
-      - name: Enviar build para VPS
+      - name: Deploy Backend
         run: |
-          rsync -avz --delete dist/ root@${{ secrets.VPS_HOST }}:/www/wwwroot/backend-control/dist/
-          rsync -avz package.json package-lock.json root@${{ secrets.VPS_HOST }}:/www/wwwroot/backend-control/
-
-      - name: Instalar dependências de produção na VPS
-        run: |
-          ssh -i ~/.ssh/id_rsa root@${{ secrets.VPS_HOST }} "cd /www/wwwroot/backend-control && npm install --omit=dev"
+          ssh -i ~/.ssh/github_deploy -o StrictHostKeyChecking=no root@${{ secrets.VPS_HOST }} << 'EOF'
+            if [ ! -d "/www/wwwroot/backend-control/.git" ]; then
+              git clone git@github.com:Avera-Tech/avera-backend-control.git /www/wwwroot/backend-control
+            fi
+            cd /www/wwwroot/backend-control
+            git pull origin master
+            npm install
+            npm run build
+            PORT=3000 NODE_ENV=production pm2 restart avera-backend-prod --update-env || \
+              PORT=3000 NODE_ENV=production pm2 start dist/index.js --name avera-backend-prod
+            pm2 save
+          EOF
