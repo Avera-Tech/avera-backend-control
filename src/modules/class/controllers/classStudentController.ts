@@ -1,5 +1,4 @@
 import { Request, Response } from 'express';
-import { Op } from 'sequelize';
 import coreDB from '../../../config/database.core';
 import Class from '../models/Class.model';
 import ClassStudent from '../models/ClassStudent.model';
