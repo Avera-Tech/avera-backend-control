@@ -21,7 +21,7 @@ jobs:
 
       - name: Criar .env remoto
         run: |
-          ssh -i ~/.ssh/id_rsa root@${{ secrets.VPS_HOST }} "cat > /www/wwwroot/backend-control/.env << 'EOF'
+          ssh -i ~/.ssh/id_rsa root@${{ secrets.VPS_HOST }} "mkdir -p /www/wwwroot/backend-control && cat > /www/wwwroot/backend-control/.env << 'EOF'
           NODE_ENV=production
           PORT=3000
           JWT_SECRET=${{ secrets.JWT_SECRET }}
