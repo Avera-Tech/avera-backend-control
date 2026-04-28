@@ -21,22 +21,6 @@ jobs:
           chmod 600 ~/.ssh/github_deploy
           ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Criar .env remoto
-        run: |
-          ssh -i ~/.ssh/github_deploy -o StrictHostKeyChecking=no root@${{ secrets.VPS_HOST }} "mkdir -p /www/wwwroot/backend-control && cat <<EOF > /www/wwwroot/backend-control/.env
-            NODE_ENV=production
-            PORT=3000
-            JWT_SECRET=${{ secrets.JWT_SECRET }}
-            DB_CORE_HOST=localhost
-            DB_CORE_NAME=core_db
-            DB_CORE_USER=${{ secrets.DB_USER }}
-            DB_CORE_PASS=${{ secrets.DB_PASS }}
-            DB_MASTER_HOST=localhost
-            DB_MASTER_NAME=master_db
-            DB_MASTER_USER=${{ secrets.DB_USER }}
-            DB_MASTER_PASS=${{ secrets.DB_PASS }}
-          EOF"
-
       - name: Deploy Backend
         run: |
           ssh -i ~/.ssh/github_deploy -o StrictHostKeyChecking=no root@${{ secrets.VPS_HOST }} << 'EOF'
@@ -46,6 +30,19 @@ jobs:
             fi
             cd /www/wwwroot/backend-control
             git pull origin master
+            {
+              echo "NODE_ENV=production"
+              echo "PORT=3000"
+              echo "JWT_SECRET=${{ secrets.JWT_SECRET }}"
+              echo "DB_CORE_HOST=localhost"
+              echo "DB_CORE_NAME=core_db"
+              echo "DB_CORE_USER=${{ secrets.DB_USER }}"
+              echo "DB_CORE_PASS=${{ secrets.DB_PASS }}"
+              echo "DB_MASTER_HOST=localhost"
+              echo "DB_MASTER_NAME=master_db"
+              echo "DB_MASTER_USER=${{ secrets.DB_USER }}"
+              echo "DB_MASTER_PASS=${{ secrets.DB_PASS }}"
+            } > .env
             npm install
             npm run build
             PORT=3000 NODE_ENV=production pm2 restart avera-backend-prod --update-env || \
