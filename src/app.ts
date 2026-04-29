@@ -56,7 +56,7 @@ app.use('/api', routes);
 app.get('/', (_req: Request, res: Response) => {
   res.json({
     success: true,
-    version: '1.0.0',
+    version: '1.0.1',
   });
 });
 
