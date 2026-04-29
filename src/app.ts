@@ -56,83 +56,8 @@ app.use('/api', routes);
 app.get('/', (_req: Request, res: Response) => {
   res.json({
     success: true,
-    message: 'Backend Node.js - Multi-Database (Master + Core) com RBAC',
     version: '1.0.0',
-    endpoints: {
-      health: 'GET /api/health',
-
-      auth: {
-        login: 'POST /api/auth/login',
-        register: 'POST /api/auth/register',
-        refresh: 'POST /api/auth/refresh',
-        me: 'GET /api/auth/me',
-        verifyOtp: 'POST /api/auth/verify-otp',
-        resendOtp: 'POST /api/auth/resend-otp',
-        requestReset: 'POST /api/auth/request-reset',
-        resetPassword: 'POST /api/auth/reset-password',
-        changePassword: 'POST /api/auth/change-password',
-      },
-
-      authUsers: {
-        list: 'GET /api/users',
-        getById: 'GET /api/users/:id',
-        create: 'POST /api/users',
-        update: 'PUT /api/users/:id',
-        remove: 'DELETE /api/users/:id',
-        activate: 'PATCH /api/users/:id/activate',
-        changePassword: 'PATCH /api/users/me/password',
-        resetPassword: 'PATCH /api/users/:id/reset-password',
-      },
-
-      clients: {
-        dropdown: 'GET /api/users/dropdown',
-        list: 'GET /api/users',
-        getById: 'GET /api/users/:id',
-        create: 'POST /api/users',
-        update: 'PATCH /api/users/:id',
-      },
-
-      credits: {
-        assign: 'POST /api/users/:id/credits',
-        list: 'GET  /api/users/:id/credits',
-        consume: 'POST /api/users/:id/credits/consume',
-      },
-
-      productTypes: {
-        dropdown: 'GET /api/product-types/dropdown',
-        list: 'GET /api/product-types',
-        create: 'POST /api/product-types',
-        update: 'PATCH /api/product-types/:id',
-      },
-
-      places: {
-        list: 'GET /api/places',
-        create: 'POST /api/places',
-        update: 'PATCH /api/places/:id',
-      },
-
-      products: {
-        list: 'GET /api/products',
-        getById: 'GET /api/products/:id',
-        create: 'POST /api/products',
-        update: 'PATCH /api/products/:id',
-        remove: 'DELETE /api/products/:id',
-      },
-
-      staff: {
-        list: 'GET /api/staff',
-        getById: 'GET /api/staff/:id',
-        create: 'POST /api/staff',
-        update: 'PATCH /api/staff/:id',
-        deactivate: 'PATCH /api/staff/:id/deactivate',
-      },
-
-      system: {
-        sync: 'POST /api/sync',
-        seed: 'POST /api/seed',
-        seedAdmin: 'POST /api/seed/admin',
-      },
-    }});
+  });
 });
 
 /**
