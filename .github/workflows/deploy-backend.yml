@@ -58,5 +58,5 @@ jobs:
             } > .env
             npm install
             npm run build
-            pm2 restart avera_backend_control
+            pm2 startOrReload ecosystem.config.js --env production
           EOF
