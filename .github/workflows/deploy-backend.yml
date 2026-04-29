@@ -58,7 +58,5 @@ jobs:
             } > .env
             npm install
             npm run build
-            PORT=${{ secrets.PORT }} NODE_ENV=production pm2 restart avera-backend-prod --update-env || \
-              PORT=${{ secrets.PORT }} NODE_ENV=production pm2 start dist/index.js --name avera-backend-prod
-            pm2 save
+            pm2 restart avera_backend_control
           EOF
