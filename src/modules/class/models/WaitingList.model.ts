@@ -1,5 +1,4 @@
-import { Model, DataTypes, Optional } from 'sequelize';
-import coreDB from '../../../config/database.core';
+import { Model, Optional } from 'sequelize';
 
 interface WaitingListAttributes {
   id: number;
@@ -25,41 +24,5 @@ class WaitingList
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
-
-WaitingList.init(
-  {
-    id: {
-      type: DataTypes.INTEGER.UNSIGNED,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    class_id: {
-      type: DataTypes.INTEGER.UNSIGNED,
-      allowNull: false,
-      references: { model: 'classes', key: 'id' },
-    },
-    user_id: {
-      type: DataTypes.INTEGER.UNSIGNED,
-      allowNull: false,
-      references: { model: 'users', key: 'id' },
-    },
-    order: {
-      type: DataTypes.INTEGER.UNSIGNED,
-      allowNull: false,
-    },
-  },
-  {
-    sequelize: coreDB,
-    tableName: 'waiting_list',
-    timestamps: true,
-    indexes: [
-      {
-        unique: true,
-        fields: ['class_id', 'user_id'],
-        name: 'uq_waiting_list_class_user',
-      },
-    ],
-  }
-);
 
 export default WaitingList;

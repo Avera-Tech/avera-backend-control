@@ -1,4 +1,4 @@
-import Transaction from '../models/Transaction.model';
+import { TenantDb } from '../../../config/tenantModels';
 
 interface PagarmeTransactionData {
   status: string;
@@ -21,13 +21,14 @@ export async function saveTransaction(
   data: PagarmeTransactionData,
   credit: number,
   studentId: number,
+  db: TenantDb,
   productTypeId?: number
 ): Promise<{ success: boolean; message: string }> {
   try {
-    const transaction = await Transaction.create({
+    const transaction = await db.Transaction.create({
       transactionId: data.id,
       status: data.status,
-      transactionType: 1, // 1 = crédito
+      transactionType: 1,
       transactionCode: data.code,
       chargeId: data.charges[0]?.id ?? '',
       amount: data.amount,
@@ -66,12 +67,13 @@ export async function savePendingPixTransaction(
   },
   credit: number,
   studentId: number,
+  db: TenantDb,
   productTypeId?: number
 ): Promise<{ success: boolean; message: string }> {
   try {
-    await Transaction.create({
+    await db.Transaction.create({
       transactionId: data.id,
-      status: 'pending', // PIX começa como pending
+      status: 'pending',
       transactionType: 1,
       transactionCode: data.code,
       chargeId: data.charges[0]?.id ?? '',

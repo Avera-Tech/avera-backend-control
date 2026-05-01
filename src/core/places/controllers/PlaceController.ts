@@ -1,11 +1,6 @@
-// src/core/places/controllers/PlaceController.ts
-
 import { Request, Response } from 'express';
 import { Op } from 'sequelize';
 import Joi from 'joi';
-import Place from '../models/Place.model';
-
-// ─── Schemas de Validação ─────────────────────────────────────────────────────
 
 const createSchema = Joi.object({
   name: Joi.string().max(100).required().messages({
@@ -26,12 +21,11 @@ const updateSchema = Joi.object({
   'object.min': 'Informe ao menos um campo para atualizar',
 });
 
-// ─── Controller ───────────────────────────────────────────────────────────────
-
 export class PlaceController {
 
-  static async list(_req: Request, res: Response): Promise<Response> {
+  static async list(req: Request, res: Response): Promise<Response> {
     try {
+      const { Place } = req.tenantDb;
       const places = await Place.findAll({
         order: [['name', 'ASC']],
       });
@@ -61,6 +55,7 @@ export class PlaceController {
         });
       }
 
+      const { Place } = req.tenantDb;
       const { name, address, active } = value;
 
       const existing = await Place.findOne({ where: { name: name.trim() } });
@@ -104,6 +99,7 @@ export class PlaceController {
         });
       }
 
+      const { Place } = req.tenantDb;
       const place = await Place.findByPk(Number(id));
       if (!place) {
         return res.status(404).json({

@@ -1,6 +1,4 @@
-import Item from '../models/Item.model';
-// TODO: ajuste o path conforme a localização do Product.model no seu projeto
-import Product from '../../products/models/Product.model';
+import { TenantDb } from '../../../config/tenantModels';
 
 export interface ItemData {
   itemId: string | number;
@@ -11,15 +9,15 @@ export interface ItemData {
   credit: number;
 }
 
-// Cria os itens no banco após confirmação da transação
 export async function createItemsAfterTransaction(
   transactionId: string,
   studentId: number,
-  items: ItemData[]
+  items: ItemData[],
+  db: TenantDb
 ): Promise<{ success: boolean; message: string; error?: string }> {
   try {
     for (const item of items) {
-      await Item.create({
+      await db.Item.create({
         itemId: Number(item.itemId),
         transactionId,
         itemCode: item.code ?? String(item.itemId),
@@ -39,24 +37,22 @@ export async function createItemsAfterTransaction(
   }
 }
 
-// Verifica se o aluno ainda pode comprar o produto (respeitando purchaseLimit)
 export async function checkPurchaseLimit(
   studentId: number,
-  productId: number | string
+  productId: number | string,
+  db: TenantDb
 ): Promise<boolean> {
-  const product = await Product.findByPk(productId);
+  const product = await db.Product.findByPk(productId);
 
-  // Sem limite definido → sempre permitido
   if (!product || !product.purchaseLimit) return true;
 
-  const purchaseCount = await Item.count({
+  const purchaseCount = await db.Item.count({
     where: { studentId, itemId: productId },
   });
 
   return purchaseCount < product.purchaseLimit;
 }
 
-// Atualiza status dos itens de uma transação (usado após confirmação de PIX)
-export async function activateItemsByTransaction(transactionId: string): Promise<void> {
-  await Item.update({ status: 'ativo' }, { where: { transactionId } });
+export async function activateItemsByTransaction(transactionId: string, db: TenantDb): Promise<void> {
+  await db.Item.update({ status: 'ativo' }, { where: { transactionId } });
 }

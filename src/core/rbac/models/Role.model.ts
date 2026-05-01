@@ -1,5 +1,4 @@
-import { Model, DataTypes, Optional } from 'sequelize';
-import coreDB from '../../../config/database.core';
+import { Model, Optional } from 'sequelize';
 
 interface RoleAttributes {
   id: number;
@@ -23,47 +22,5 @@ class Role extends Model<RoleAttributes, RoleCreationAttributes> implements Role
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
-
-Role.init(
-  {
-    id: {
-      type: DataTypes.INTEGER.UNSIGNED,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    name: {
-      type: DataTypes.STRING(50),
-      allowNull: false,
-      unique: true,
-    },
-    slug: {
-      type: DataTypes.STRING(50),
-      allowNull: false,
-      unique: true,
-      comment: 'Identificador único para uso em código (ex: admin, manager, user)',
-    },
-    description: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-    active: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: true,
-    },
-  },
-  {
-    sequelize: coreDB,
-    tableName: 'roles',
-    timestamps: true,
-    underscored: false,
-    indexes: [
-      {
-        unique: true,
-        fields: ['slug'],
-      },
-    ],
-  }
-);
 
 export default Role;

@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
-import User from '../../../modules/user/models/User.model';
-import Product from '../../products/models/Product.model';
+import { TenantDb } from '../../../config/tenantModels';
 import { saveTransaction } from './Transaction.controller';
 import { updateCustomerBalance } from './Balance.controller';
 import { checkPurchaseLimit, createItemsAfterTransaction } from './Items.controller';
@@ -9,8 +8,6 @@ import {
   createCashOrder,
   PagarmeOrderItem,
 } from '../services/pagarme.service';
-
-// ─── Interfaces ───────────────────────────────────────────────────────────────
 
 interface ProductRequest {
   productId: string;
@@ -45,23 +42,21 @@ interface CheckoutCashRequest {
   cash: CashPaymentRequest;
 }
 
-// ─── Helper: montar itens da ordem Pagar.me ──────────────────────────────────
-
 async function buildOrderItems(
   products: ProductRequest[],
-  userId: number
+  userId: number,
+  db: TenantDb
 ): Promise<{ items: PagarmeOrderItem[]; creditTotal: number; productTypeId: number | null }> {
   const productIds = products.map((p) => p.productId);
-  const productInfos = await Product.findAll({ where: { id: productIds } });
+  const productInfos = await db.Product.findAll({ where: { id: productIds } });
 
   if (!productInfos.length) throw new Error('Produtos não encontrados.');
 
   let creditTotal = 0;
   let productTypeId: number | null = null;
 
-  // Verificar limite de compra por produto
   for (const item of products) {
-    const allowed = await checkPurchaseLimit(userId, item.productId);
+    const allowed = await checkPurchaseLimit(userId, item.productId, db);
     if (!allowed) {
       throw new Error(
         `O produto ${item.productId} atingiu o limite de compras para este aluno.`
@@ -78,7 +73,7 @@ async function buildOrderItems(
 
     return {
       itemId: product.id,
-      amount: Math.round(product.value * 100), // em centavos
+      amount: Math.round(product.value * 100),
       description: product.name.replace(/[^a-zA-Z0-9 ]/g, ''),
       quantity: item.quantity,
       credit: product.credits,
@@ -89,13 +84,12 @@ async function buildOrderItems(
   return { items, creditTotal, productTypeId };
 }
 
-// ─── POST /checkout/card ──────────────────────────────────────────────────────
-
 export const checkoutCard = async (req: Request, res: Response): Promise<Response> => {
   try {
+    const { ClientUser } = req.tenantDb;
     const { userId, products, payment, billingAddress }: CheckoutCardRequest = req.body;
 
-    const user = await User.findByPk(userId);
+    const user = await ClientUser.findByPk(userId);
     if (!user) {
       return res.status(404).json({ success: false, message: 'Aluno não encontrado.' });
     }
@@ -105,7 +99,7 @@ export const checkoutCard = async (req: Request, res: Response): Promise<Respons
     let productTypeId: number | null;
 
     try {
-      ({ items, creditTotal, productTypeId } = await buildOrderItems(products, Number(userId)));
+      ({ items, creditTotal, productTypeId } = await buildOrderItems(products, Number(userId), req.tenantDb));
     } catch (err: any) {
       return res.status(400).json({ success: false, message: err.message });
     }
@@ -131,15 +125,15 @@ export const checkoutCard = async (req: Request, res: Response): Promise<Respons
       });
     }
 
-    const save = await saveTransaction(result.data, creditTotal, Number(userId), productTypeId ?? undefined);
+    const save = await saveTransaction(result.data, creditTotal, Number(userId), req.tenantDb, productTypeId ?? undefined);
     if (!save.success) {
       return res.status(500).json({ success: false, message: 'Falha ao salvar transação.' });
     }
 
-    await updateCustomerBalance(Number(userId), creditTotal, result.data.id, true, productTypeId!);
+    await updateCustomerBalance(Number(userId), creditTotal, result.data.id, true, productTypeId!, req.tenantDb);
 
     try {
-      await createItemsAfterTransaction(result.data.id, Number(userId), items);
+      await createItemsAfterTransaction(result.data.id, Number(userId), items, req.tenantDb);
     } catch (err) {
       console.error('[Checkout] Erro ao criar itens:', err);
     }
@@ -155,13 +149,12 @@ export const checkoutCard = async (req: Request, res: Response): Promise<Respons
   }
 };
 
-// ─── POST /checkout/cash ──────────────────────────────────────────────────────
-
 export const checkoutCash = async (req: Request, res: Response): Promise<Response> => {
   try {
+    const { ClientUser } = req.tenantDb;
     const { userId, products, cash }: CheckoutCashRequest = req.body;
 
-    const user = await User.findByPk(userId);
+    const user = await ClientUser.findByPk(userId);
     if (!user) {
       return res.status(404).json({ success: false, message: 'Aluno não encontrado.' });
     }
@@ -171,7 +164,7 @@ export const checkoutCash = async (req: Request, res: Response): Promise<Respons
     let productTypeId: number | null;
 
     try {
-      ({ items, creditTotal, productTypeId } = await buildOrderItems(products, Number(userId)));
+      ({ items, creditTotal, productTypeId } = await buildOrderItems(products, Number(userId), req.tenantDb));
     } catch (err: any) {
       return res.status(400).json({ success: false, message: err.message });
     }
@@ -194,15 +187,15 @@ export const checkoutCash = async (req: Request, res: Response): Promise<Respons
       });
     }
 
-    const save = await saveTransaction(result.data, creditTotal, Number(userId), productTypeId ?? undefined);
+    const save = await saveTransaction(result.data, creditTotal, Number(userId), req.tenantDb, productTypeId ?? undefined);
     if (!save.success) {
       return res.status(500).json({ success: false, message: 'Falha ao salvar transação.' });
     }
 
-    await updateCustomerBalance(Number(userId), creditTotal, result.data.id, true, productTypeId!);
+    await updateCustomerBalance(Number(userId), creditTotal, result.data.id, true, productTypeId!, req.tenantDb);
 
     try {
-      await createItemsAfterTransaction(result.data.id, Number(userId), items);
+      await createItemsAfterTransaction(result.data.id, Number(userId), items, req.tenantDb);
     } catch (err) {
       console.error('[Checkout Cash] Erro ao criar itens:', err);
     }

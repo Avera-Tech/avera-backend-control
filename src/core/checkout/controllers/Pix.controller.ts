@@ -1,14 +1,12 @@
 import { Request, Response } from 'express';
 import crypto from 'crypto';
-import Student from '../../../modules/user/models/User.model';
-import Product from '../../products/models/Product.model';
-import Transaction from '../models/Transaction.model';
+import { getTenantDb } from '../../../config/tenantConnectionManager';
+import TenantConfig from '../../../master/models/TenantConfig.model';
 import { savePendingPixTransaction } from './Transaction.controller';
 import { updateCustomerBalance } from './Balance.controller';
 import { checkPurchaseLimit, createItemsAfterTransaction, activateItemsByTransaction } from './Items.controller';
 import { createPixOrder, PagarmeOrderItem } from '../services/pagarme.service';
-
-// ─── Interfaces ───────────────────────────────────────────────────────────────
+import { TenantDb } from '../../../config/tenantModels';
 
 interface ProductRequest {
   productId: string;
@@ -27,13 +25,12 @@ interface CheckoutPixRequest {
   pix?: PixPaymentRequest;
 }
 
-// ─── POST /checkout/pix ───────────────────────────────────────────────────────
-
 export const checkoutPix = async (req: Request, res: Response): Promise<Response> => {
   try {
+    const { ClientUser, Product } = req.tenantDb;
     const { studentId, products, pix }: CheckoutPixRequest = req.body;
 
-    const student = await Student.findByPk(studentId);
+    const student = await ClientUser.findByPk(studentId);
     if (!student) {
       return res.status(404).json({ success: false, message: 'Aluno não encontrado.' });
     }
@@ -45,9 +42,8 @@ export const checkoutPix = async (req: Request, res: Response): Promise<Response
       return res.status(404).json({ success: false, message: 'Produtos não encontrados.' });
     }
 
-    // Verificar limite de compras
     for (const item of products) {
-      const allowed = await checkPurchaseLimit(Number(studentId), item.productId);
+      const allowed = await checkPurchaseLimit(Number(studentId), item.productId, req.tenantDb);
       if (!allowed) {
         return res.status(400).json({
           success: false,
@@ -84,7 +80,9 @@ export const checkoutPix = async (req: Request, res: Response): Promise<Response
       type: 'individual' as const,
     };
 
-    const result = await createPixOrder(customer, items, pix ?? {});
+    // Store clientId in metadata so the webhook can resolve the tenant DB
+    const clientId = req.headers['x-client-id'] as string;
+    const result = await createPixOrder(customer, items, { ...(pix ?? {}), metadata: { clientId } });
 
     if (!result.success) {
       return res.status(500).json({
@@ -94,22 +92,20 @@ export const checkoutPix = async (req: Request, res: Response): Promise<Response
       });
     }
 
-    // Salvar transação como pending — será ativada pelo webhook
     await savePendingPixTransaction(
       result.data,
       creditTotal,
       Number(studentId),
+      req.tenantDb,
       productTypeId ?? undefined
     );
 
-    // Criar itens com status 'pendente' (ativados no webhook)
     try {
-      await createItemsAfterTransaction(result.data.id, Number(studentId), items);
+      await createItemsAfterTransaction(result.data.id, Number(studentId), items, req.tenantDb);
     } catch (err) {
       console.error('[Checkout PIX] Erro ao criar itens:', err);
     }
 
-    // Extrair QR code da resposta da Pagar.me
     const charge = result.data?.charges?.[0];
     const lastTransaction = charge?.last_transaction;
     const qrCode = lastTransaction?.qr_code ?? null;
@@ -128,12 +124,10 @@ export const checkoutPix = async (req: Request, res: Response): Promise<Response
   }
 };
 
-// ─── POST /checkout/pix/webhook ───────────────────────────────────────────────
-// Recebe eventos da Pagar.me e confirma o pagamento PIX
-
+// Public webhook — called by Pagar.me, no X-Client-Id header.
+// Resolves tenant DB from clientId stored in order metadata at checkout time.
 export const pixWebhook = async (req: Request, res: Response): Promise<Response> => {
   try {
-    // Validar assinatura do webhook (HMAC-SHA256)
     const signature = req.headers['x-hub-signature'] as string;
     if (signature && process.env.PAGARME_WEBHOOK_SECRET) {
       const expected =
@@ -149,18 +143,37 @@ export const pixWebhook = async (req: Request, res: Response): Promise<Response>
       }
     }
 
-    // Responder imediatamente para a Pagar.me (evitar timeout)
     res.status(200).json({ received: true });
 
-    // Processar o evento de forma assíncrona
     const { type, data } = req.body;
+    const clientId = data?.metadata?.clientId as string | undefined;
+
+    if (!clientId) {
+      console.warn('[PIX Webhook] clientId ausente nos metadados — ignorando evento');
+      return res.status(200).json({ received: true });
+    }
+
+    const tenantConfig = await TenantConfig.findOne({ where: { clientId } });
+    if (!tenantConfig) {
+      console.error(`[PIX Webhook] Tenant '${clientId}' não encontrado`);
+      return res.status(200).json({ received: true });
+    }
+
+    const db = getTenantDb({
+      clientId: tenantConfig.clientId,
+      dbHost: tenantConfig.dbHost,
+      dbPort: tenantConfig.dbPort,
+      dbUser: tenantConfig.dbUser,
+      dbPass: tenantConfig.dbPass,
+      dbName: tenantConfig.dbName,
+    });
 
     if (type === 'charge.paid') {
-      await handlePixPaid(data);
+      await handlePixPaid(data, db);
     } else if (type === 'charge.refunded') {
-      await handlePixRefunded(data);
+      await handlePixRefunded(data, db);
     } else if (type === 'charge.payment_failed') {
-      await handlePixFailed(data);
+      await handlePixFailed(data, db);
     }
 
     return res.status(200).json({ received: true });
@@ -170,13 +183,9 @@ export const pixWebhook = async (req: Request, res: Response): Promise<Response>
   }
 };
 
-// ─── Handlers internos ────────────────────────────────────────────────────────
-
-async function handlePixPaid(chargeData: any) {
+async function handlePixPaid(chargeData: any, db: TenantDb) {
   try {
-    console.log('[PIX] Pagamento confirmado:', chargeData.id);
-
-    const transaction = await Transaction.findOne({
+    const transaction = await db.Transaction.findOne({
       where: { chargeId: chargeData.id },
     });
 
@@ -190,20 +199,18 @@ async function handlePixPaid(chargeData: any) {
       return;
     }
 
-    // Atualizar status da transação
     await transaction.update({ status: 'paid', paidAt: new Date() });
 
-    // Adicionar créditos ao aluno
     await updateCustomerBalance(
       transaction.studentId,
       transaction.balance,
       transaction.transactionId,
       true,
-      transaction.productTypeId
+      transaction.productTypeId,
+      db
     );
 
-    // Ativar itens
-    await activateItemsByTransaction(transaction.transactionId);
+    await activateItemsByTransaction(transaction.transactionId, db);
 
     console.log('[PIX] Créditos adicionados e itens ativados.');
   } catch (error) {
@@ -211,11 +218,9 @@ async function handlePixPaid(chargeData: any) {
   }
 }
 
-async function handlePixRefunded(chargeData: any) {
+async function handlePixRefunded(chargeData: any, db: TenantDb) {
   try {
-    console.log('[PIX] Estorno:', chargeData.id);
-
-    const transaction = await Transaction.findOne({
+    const transaction = await db.Transaction.findOne({
       where: { chargeId: chargeData.id },
     });
 
@@ -223,34 +228,28 @@ async function handlePixRefunded(chargeData: any) {
 
     await transaction.update({ status: 'refunded' });
 
-    // Remover créditos do aluno
     await updateCustomerBalance(
       transaction.studentId,
       transaction.balance,
       transaction.transactionId,
-      false, // remover
-      transaction.productTypeId
+      false,
+      transaction.productTypeId,
+      db
     );
-
-    console.log('[PIX] Estorno processado.');
   } catch (error) {
     console.error('[PIX] Erro ao processar estorno:', error);
   }
 }
 
-async function handlePixFailed(chargeData: any) {
+async function handlePixFailed(chargeData: any, db: TenantDb) {
   try {
-    console.log('[PIX] Falha no pagamento:', chargeData.id);
-
-    const transaction = await Transaction.findOne({
+    const transaction = await db.Transaction.findOne({
       where: { chargeId: chargeData.id },
     });
 
     if (!transaction) return;
 
     await transaction.update({ status: 'failed' });
-
-    console.log('[PIX] Status atualizado para failed.');
   } catch (error) {
     console.error('[PIX] Erro ao processar falha:', error);
   }

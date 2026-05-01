@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import Staff from '../../staff/models/Staff.model';
+import { TenantDb } from '../../../config/tenantModels';
 
 const PASSWORD_REGEX =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[ !"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]).{8,}$/;
@@ -42,7 +42,8 @@ export class PasswordService {
 
   static async resetPassword(
     token: string,
-    newPassword: string
+    newPassword: string,
+    db: TenantDb
   ): Promise<{ success: boolean; error?: string }> {
     const payload = this.verifyResetToken(token);
     if (!payload) {
@@ -56,6 +57,7 @@ export class PasswordService {
       };
     }
 
+    const { Staff } = db;
     const staff = await Staff.findOne({
       where: { id: payload.staffId, email: payload.email },
     });
@@ -73,6 +75,7 @@ export class PasswordService {
     staffId: number,
     currentPassword: string,
     newPassword: string,
+    db: TenantDb,
     confirmPassword?: string
   ): Promise<{ success: boolean; error?: string }> {
     if (confirmPassword && newPassword !== confirmPassword) {
@@ -86,6 +89,7 @@ export class PasswordService {
       };
     }
 
+    const { Staff } = db;
     const staff = await Staff.findByPk(staffId);
     if (!staff) return { success: false, error: 'Usuário não encontrado' };
 

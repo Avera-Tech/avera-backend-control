@@ -2,29 +2,27 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { randomBytes, randomUUID } from 'crypto';
 import { Op } from 'sequelize';
-import coreDB from '../../../config/database.core';
-import Staff from '../../../core/staff/models/Staff.model';
-import Role from '../../../core/rbac/models/Role.model';
-import UserRole from '../../../core/rbac/models/UserRole.model';
+import { TenantDb } from '../../../config/tenantModels';
 
-function withRoles() {
+function withRoles(db: TenantDb) {
   return {
-    model: Role,
+    model: db.Role,
     as: 'roles',
     attributes: ['id', 'name', 'slug'],
     through: { attributes: [] },
   };
 }
 
-async function findStaff(id: number) {
-  return Staff.findByPk(id, {
+async function findStaff(id: number, db: TenantDb) {
+  return db.Staff.findByPk(id, {
     attributes: { exclude: ['password'] },
-    include: [withRoles()],
+    include: [withRoles(db)],
   });
 }
 
 export async function createStaff(req: Request, res: Response): Promise<Response> {
   try {
+    const { Staff, Role, UserRole, sequelize } = req.tenantDb;
     const { name, email, password, role: roleSlug, phone, employeeLevel } = req.body;
 
     if (!name || !email || !password || !roleSlug) {
@@ -53,7 +51,7 @@ export async function createStaff(req: Request, res: Response): Promise<Response
     const hashedPassword = await bcrypt.hash(password, saltRounds);
     const assignedBy = req.user?.staffId ?? undefined;
 
-    const staffId = await coreDB.transaction(async (t) => {
+    const staffId = await sequelize.transaction(async (t) => {
       const staff = await Staff.create(
         {
           name: String(name).trim(),
@@ -75,7 +73,7 @@ export async function createStaff(req: Request, res: Response): Promise<Response
       return staff.id;
     });
 
-    const data = await findStaff(staffId);
+    const data = await findStaff(staffId, req.tenantDb);
 
     return res.status(201).json({ success: true, data, message: 'Funcionário criado com sucesso' });
   } catch (err: unknown) {
@@ -90,6 +88,7 @@ export async function createStaff(req: Request, res: Response): Promise<Response
 
 export async function listStaff(req: Request, res: Response): Promise<Response> {
   try {
+    const { Staff } = req.tenantDb;
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
     const offset = (page - 1) * limit;
@@ -115,7 +114,7 @@ export async function listStaff(req: Request, res: Response): Promise<Response> 
       where,
       include: [
         {
-          ...withRoles(),
+          ...withRoles(req.tenantDb),
           ...(roleWhere ? { where: roleWhere, required: true } : {}),
         },
       ],
@@ -138,7 +137,7 @@ export async function listStaff(req: Request, res: Response): Promise<Response> 
 
 export async function getStaffById(req: Request, res: Response): Promise<Response> {
   try {
-    const data = await findStaff(Number(req.params.id));
+    const data = await findStaff(Number(req.params.id), req.tenantDb);
     if (!data) {
       return res.status(404).json({ success: false, message: 'Funcionário não encontrado' });
     }
@@ -151,6 +150,7 @@ export async function getStaffById(req: Request, res: Response): Promise<Respons
 
 export async function updateStaff(req: Request, res: Response): Promise<Response> {
   try {
+    const { Staff, Role, UserRole, sequelize } = req.tenantDb;
     const staff = await Staff.findByPk(Number(req.params.id));
     if (!staff) {
       return res.status(404).json({ success: false, message: 'Funcionário não encontrado' });
@@ -170,7 +170,7 @@ export async function updateStaff(req: Request, res: Response): Promise<Response
 
     const assignedBy = req.user?.staffId ?? undefined;
 
-    await coreDB.transaction(async (t) => {
+    await sequelize.transaction(async (t) => {
       if (Object.keys(updates).length > 0) {
         await staff.update(updates, { transaction: t });
       }
@@ -183,7 +183,7 @@ export async function updateStaff(req: Request, res: Response): Promise<Response
       }
     });
 
-    const data = await findStaff(staff.id);
+    const data = await findStaff(staff.id, req.tenantDb);
     return res.json({ success: true, data, message: 'Funcionário atualizado com sucesso' });
   } catch (err: unknown) {
     console.error('updateStaff error:', err);
@@ -197,11 +197,12 @@ export async function updateStaff(req: Request, res: Response): Promise<Response
 
 export async function deactivateStaff(req: Request, res: Response): Promise<Response> {
   try {
+    const { Staff } = req.tenantDb;
     const staff = await Staff.findByPk(Number(req.params.id));
     if (!staff) {
       return res.status(404).json({ success: false, message: 'Funcionário não encontrado' });
     }
-    
+
     const saltRounds = Number(process.env.BCRYPT_ROUNDS) || 10;
     const anonymousPassword = await bcrypt.hash(randomBytes(32).toString('hex'), saltRounds);
 

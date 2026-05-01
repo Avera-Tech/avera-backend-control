@@ -1,16 +1,10 @@
 import { Request, Response } from 'express';
 import { Op } from 'sequelize';
-import coreDB from '../../../config/database.core';
-import Class from '../models/Class.model';
-import ClassStudent from '../models/ClassStudent.model';
-import WaitingList from '../models/WaitingList.model';
-import ClientUser from '../../../modules/user/models/User.model';
-import ProductType from '../../../core/products/models/ProductType.model';
-import Place from '../../../modules/place/models/Place.model';
+import { TenantDb } from '../../../config/tenantModels';
 
-function includeStudent() {
+function includeStudent(db: TenantDb) {
   return {
-    model: ClientUser,
+    model: db.ClientUser,
     as: 'student',
     attributes: ['id', 'name', 'email'],
   };
@@ -18,6 +12,7 @@ function includeStudent() {
 
 export async function addToWaitingList(req: Request, res: Response): Promise<Response> {
   try {
+    const { Class, ClassStudent, WaitingList } = req.tenantDb;
     const class_id = Number(req.params.classId);
     const { user_id } = req.body;
 
@@ -52,12 +47,12 @@ export async function addToWaitingList(req: Request, res: Response): Promise<Res
       return res.status(409).json({ success: false, message: 'Aluno já está na lista de espera desta aula' });
     }
 
-    const last = await WaitingList.max<number, WaitingList>('order', { where: { class_id } });
+    const last = await WaitingList.max<number, any>('order', { where: { class_id } });
     const order = (last ?? 0) + 1;
 
     const entry = await WaitingList.create({ class_id, user_id: Number(user_id), order });
 
-    const data = await WaitingList.findByPk(entry.id, { include: [includeStudent()] });
+    const data = await WaitingList.findByPk(entry.id, { include: [includeStudent(req.tenantDb)] });
 
     return res.status(201).json({
       success: true,
@@ -77,6 +72,7 @@ export async function addToWaitingList(req: Request, res: Response): Promise<Res
 
 export async function removeFromWaitingList(req: Request, res: Response): Promise<Response> {
   try {
+    const { WaitingList, sequelize } = req.tenantDb;
     const class_id = Number(req.params.classId);
     const { user_id } = req.body;
 
@@ -91,7 +87,7 @@ export async function removeFromWaitingList(req: Request, res: Response): Promis
 
     const deletedOrder = entry.order;
 
-    await coreDB.transaction(async (t) => {
+    await sequelize.transaction(async (t) => {
       await entry.destroy({ transaction: t });
 
       await WaitingList.decrement('order', {
@@ -110,6 +106,7 @@ export async function removeFromWaitingList(req: Request, res: Response): Promis
 
 export async function promoteFromWaitingList(req: Request, res: Response): Promise<Response> {
   try {
+    const { Class, ClassStudent, WaitingList, sequelize } = req.tenantDb;
     const class_id = Number(req.params.classId);
     const { user_id } = req.body;
 
@@ -133,7 +130,7 @@ export async function promoteFromWaitingList(req: Request, res: Response): Promi
 
     const promotedOrder = waitingEntry.order;
 
-    const classStudent = await coreDB.transaction(async (t) => {
+    const classStudent = await sequelize.transaction(async (t) => {
       const freshClass = await Class.findByPk(class_id, {
         attributes: ['id', 'limit', 'spots_taken'],
         lock: t.LOCK.UPDATE,
@@ -164,7 +161,7 @@ export async function promoteFromWaitingList(req: Request, res: Response): Promi
       return enrollment;
     });
 
-    const data = await ClassStudent.findByPk(classStudent.id, { include: [includeStudent()] });
+    const data = await ClassStudent.findByPk(classStudent.id, { include: [includeStudent(req.tenantDb)] });
 
     return res.status(201).json({
       success: true,
@@ -183,6 +180,7 @@ export async function promoteFromWaitingList(req: Request, res: Response): Promi
 
 export async function getWaitingListByClass(req: Request, res: Response): Promise<Response> {
   try {
+    const { Class, WaitingList } = req.tenantDb;
     const class_id = Number(req.params.classId);
 
     const cls = await Class.findByPk(class_id, { attributes: ['id'] });
@@ -190,7 +188,7 @@ export async function getWaitingListByClass(req: Request, res: Response): Promis
 
     const entries = await WaitingList.findAll({
       where: { class_id },
-      include: [includeStudent()],
+      include: [includeStudent(req.tenantDb)],
       order: [['order', 'ASC']],
     });
 
@@ -208,10 +206,10 @@ export async function getWaitingListByClass(req: Request, res: Response): Promis
   }
 }
 
-// NOTE: This endpoint currently uses req.query.user_id.
-// When student JWT auth is implemented, replace with req.user.userId from the token payload.
+// NOTE: When student JWT auth is implemented, replace req.query.user_id with req.user.userId.
 export async function getMyWaitingLists(req: Request, res: Response): Promise<Response> {
   try {
+    const { WaitingList, Class, ProductType, Place } = req.tenantDb;
     const user_id = Number(req.query.user_id);
 
     if (!user_id) {

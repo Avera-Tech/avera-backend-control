@@ -1,21 +1,18 @@
 import { Request, Response } from 'express';
-import coreDB from '../../../config/database.core';
-import Class from '../models/Class.model';
-import ClassStudent from '../models/ClassStudent.model';
-import ClientUser from '../../../modules/user/models/User.model';
-import UserLevel from '../../../modules/user/models/UserLevel.model';
+import { TenantDb } from '../../../config/tenantModels';
 
-function includeStudent() {
+function includeStudent(db: TenantDb) {
   return {
-    model: ClientUser,
+    model: db.ClientUser,
     as: 'student',
     attributes: ['id', 'name', 'email'],
-    include: [{ model: UserLevel, as: 'level', attributes: ['id', 'name'] }],
+    include: [{ model: db.UserLevel, as: 'level', attributes: ['id', 'name'] }],
   };
 }
 
 export async function enrollStudent(req: Request, res: Response): Promise<Response> {
   try {
+    const { Class, ClassStudent, sequelize } = req.tenantDb;
     const class_id = Number(req.params.id);
     const { user_id } = req.body;
 
@@ -35,7 +32,7 @@ export async function enrollStudent(req: Request, res: Response): Promise<Respon
       return res.status(409).json({ success: false, message: 'Aluno já matriculado nesta aula' });
     }
 
-    const enrollment = await coreDB.transaction(async (t) => {
+    const enrollment = await sequelize.transaction(async (t) => {
       const created = await ClassStudent.create(
         { class_id, user_id: Number(user_id), status: 'enrolled' },
         { transaction: t }
@@ -48,7 +45,7 @@ export async function enrollStudent(req: Request, res: Response): Promise<Respon
       return created;
     });
 
-    const data = await ClassStudent.findByPk(enrollment.id, { include: [includeStudent()] });
+    const data = await ClassStudent.findByPk(enrollment.id, { include: [includeStudent(req.tenantDb)] });
 
     return res.status(201).json({ success: true, data, message: 'Matrícula realizada com sucesso' });
   } catch (err: unknown) {
@@ -63,6 +60,7 @@ export async function enrollStudent(req: Request, res: Response): Promise<Respon
 
 export async function cancelEnrollment(req: Request, res: Response): Promise<Response> {
   try {
+    const { Class, ClassStudent, sequelize } = req.tenantDb;
     const class_id = Number(req.params.classId);
     const enrollment_id = Number(req.params.enrollmentId);
 
@@ -74,7 +72,7 @@ export async function cancelEnrollment(req: Request, res: Response): Promise<Res
       return res.status(400).json({ success: false, message: 'Matrícula já está cancelada' });
     }
 
-    await coreDB.transaction(async (t) => {
+    await sequelize.transaction(async (t) => {
       await enrollment.update({ status: 'cancelled' }, { transaction: t });
 
       await Class.decrement('spots_taken', { by: 1, where: { id: class_id }, transaction: t });
@@ -91,6 +89,7 @@ export async function cancelEnrollment(req: Request, res: Response): Promise<Res
 
 export async function checkinByEnrollmentId(req: Request, res: Response): Promise<Response> {
   try {
+    const { ClassStudent } = req.tenantDb;
     const class_id = Number(req.params.classId);
     const enrollment_id = Number(req.params.enrollmentId);
 
@@ -119,6 +118,7 @@ export async function checkinByEnrollmentId(req: Request, res: Response): Promis
 
 export async function checkinByStudentPair(req: Request, res: Response): Promise<Response> {
   try {
+    const { ClassStudent, sequelize } = req.tenantDb;
     const class_id = Number(req.params.classId);
     const { user_id } = req.body;
 
@@ -126,7 +126,7 @@ export async function checkinByStudentPair(req: Request, res: Response): Promise
       return res.status(400).json({ success: false, message: 'user_id é obrigatório' });
     }
 
-    const data = await coreDB.transaction(async (t) => {
+    const data = await sequelize.transaction(async (t) => {
       const enrollment = await ClassStudent.findOne({
         where: { class_id, user_id: Number(user_id) },
         lock: t.LOCK.UPDATE,
@@ -173,6 +173,7 @@ export async function checkinByStudentPair(req: Request, res: Response): Promise
 
 export async function listEnrollments(req: Request, res: Response): Promise<Response> {
   try {
+    const { Class, ClassStudent } = req.tenantDb;
     const class_id = Number(req.params.id);
 
     const cls = await Class.findByPk(class_id, { attributes: ['id'] });
@@ -183,7 +184,7 @@ export async function listEnrollments(req: Request, res: Response): Promise<Resp
 
     const enrollments = await ClassStudent.findAll({
       where,
-      include: [includeStudent()],
+      include: [includeStudent(req.tenantDb)],
       order: [['createdAt', 'ASC']],
     });
 

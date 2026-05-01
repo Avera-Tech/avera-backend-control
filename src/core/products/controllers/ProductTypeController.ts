@@ -1,10 +1,6 @@
 import { Request, Response } from 'express';
 import { Op } from 'sequelize';
 import Joi from 'joi';
-import ProductType from '../models/ProductType.model';
-import Place from '../../places/models/Place.model';
-
-// ─── Schemas de Validação ─────────────────────────────────────────────────────
 
 const createSchema = Joi.object({
   name: Joi.string().max(100).required().messages({
@@ -31,12 +27,11 @@ const updateSchema = Joi.object({
   'object.min': 'Informe ao menos um campo para atualizar',
 });
 
-// ─── Controller ───────────────────────────────────────────────────────────────
-
 export class ProductTypeController {
 
-  static async dropdown(_req: Request, res: Response): Promise<Response> {
+  static async dropdown(req: Request, res: Response): Promise<Response> {
     try {
+      const { ProductType, Place } = req.tenantDb;
       const productTypes = await ProductType.findAll({
         where: { active: true },
         attributes: ['id', 'name', 'color', 'icon'],
@@ -61,8 +56,9 @@ export class ProductTypeController {
     }
   }
 
-  static async list(_req: Request, res: Response): Promise<Response> {
+  static async list(req: Request, res: Response): Promise<Response> {
     try {
+      const { ProductType } = req.tenantDb;
       const productTypes = await ProductType.findAll({
         order: [['name', 'ASC']],
       });
@@ -84,7 +80,6 @@ export class ProductTypeController {
 
   static async create(req: Request, res: Response): Promise<Response> {
     try {
-      // 1. Validar body
       const { error, value } = createSchema.validate(req.body);
       if (error) {
         return res.status(400).json({
@@ -93,9 +88,9 @@ export class ProductTypeController {
         });
       }
 
+      const { ProductType } = req.tenantDb;
       const { name, description, color, icon, active } = value;
 
-      // 2. Garantir unicidade do nome no tenant
       const existing = await ProductType.findOne({
         where: { name: name.trim() },
       });
@@ -106,7 +101,6 @@ export class ProductTypeController {
         });
       }
 
-      // 3. Criar registro
       const productType = await ProductType.create({
         name: name.trim(),
         description: description ?? null,
@@ -134,7 +128,6 @@ export class ProductTypeController {
     try {
       const { id } = req.params;
 
-      // 1. Validar body
       const { error, value } = updateSchema.validate(req.body);
       if (error) {
         return res.status(400).json({
@@ -143,7 +136,7 @@ export class ProductTypeController {
         });
       }
 
-      // 2. Buscar registro
+      const { ProductType } = req.tenantDb;
       const productType = await ProductType.findByPk(Number(id));
       if (!productType) {
         return res.status(404).json({
@@ -154,7 +147,6 @@ export class ProductTypeController {
 
       const { name, description, color, icon, active } = value;
 
-      // 3. Verificar unicidade do novo nome (excluindo o próprio registro)
       if (name && name.trim() !== productType.name) {
         const duplicated = await ProductType.findOne({
           where: {

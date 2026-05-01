@@ -106,6 +106,7 @@ export interface PixPayment {
   expires_in?: number;
   expires_at?: string;
   additional_information?: Array<{ name: string; value: string }>;
+  metadata?: Record<string, any>;
 }
 
 export async function createPixOrder(
@@ -115,7 +116,7 @@ export async function createPixOrder(
 ) {
   const phone = extractPhone(customer);
 
-  const payload = {
+  const payload: any = {
     closed: true,
     customer: {
       name: customer.name,
@@ -135,6 +136,7 @@ export async function createPixOrder(
         },
       },
     ],
+    ...(pix.metadata ? { metadata: pix.metadata } : {}),
   };
 
   return sendOrder(payload);

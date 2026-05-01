@@ -1,5 +1,4 @@
-import { Model, DataTypes, Optional } from 'sequelize';
-import coreDB from '../../../config/database.core';
+import { Model, Optional } from 'sequelize';
 
 interface ClassAttributes {
   id: number;
@@ -44,70 +43,5 @@ class Class
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
-
-Class.init(
-  {
-    id: {
-      type: DataTypes.INTEGER.UNSIGNED,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    staff_id: {
-      type: DataTypes.INTEGER.UNSIGNED,
-      allowNull: false,
-      references: { model: 'staff', key: 'id' },
-    },
-    product_type_id: {
-      type: DataTypes.INTEGER.UNSIGNED,
-      allowNull: false,
-      references: { model: 'product_types', key: 'id' },
-    },
-    place_id: {
-      type: DataTypes.INTEGER.UNSIGNED,
-      allowNull: true,
-      references: { model: 'places', key: 'id' },
-    },
-    date: {
-      type: DataTypes.DATEONLY,
-      allowNull: false,
-    },
-    time: {
-      type: DataTypes.TIME,
-      allowNull: false,
-    },
-    limit: {
-      type: DataTypes.INTEGER.UNSIGNED,
-      allowNull: false,
-    },
-    spots_taken: {
-      type: DataTypes.INTEGER.UNSIGNED,
-      allowNull: false,
-      defaultValue: 0,
-    },
-    has_commission: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
-    },
-    kickback_rule: {
-      type: DataTypes.STRING(50),
-      allowNull: true,
-    },
-    kickback: {
-      type: DataTypes.DECIMAL(10, 2),
-      allowNull: true,
-    },
-    active: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: true,
-    },
-  },
-  {
-    sequelize: coreDB,
-    tableName: 'classes',
-    timestamps: true,
-  }
-);
 
 export default Class;

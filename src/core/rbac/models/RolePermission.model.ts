@@ -1,5 +1,4 @@
-import { Model, DataTypes, Optional } from 'sequelize';
-import coreDB from '../../../config/database.core';
+import { Model, Optional } from 'sequelize';
 
 interface RolePermissionAttributes {
   id: number;
@@ -19,53 +18,5 @@ class RolePermission extends Model<RolePermissionAttributes, RolePermissionCreat
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
-
-RolePermission.init(
-  {
-    id: {
-      type: DataTypes.INTEGER.UNSIGNED,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    roleId: {
-      type: DataTypes.INTEGER.UNSIGNED,
-      allowNull: false,
-      references: {
-        model: 'roles',
-        key: 'id',
-      },
-      onDelete: 'CASCADE',
-      onUpdate: 'CASCADE',
-    },
-    permissionId: {
-      type: DataTypes.INTEGER.UNSIGNED,
-      allowNull: false,
-      references: {
-        model: 'permissions',
-        key: 'id',
-      },
-      onDelete: 'CASCADE',
-      onUpdate: 'CASCADE',
-    },
-  },
-  {
-    sequelize: coreDB,
-    tableName: 'role_permissions',
-    timestamps: true,
-    underscored: false,
-    indexes: [
-      {
-        unique: true,
-        fields: ['roleId', 'permissionId'],
-      },
-      {
-        fields: ['roleId'],
-      },
-      {
-        fields: ['permissionId'],
-      },
-    ],
-  }
-);
 
 export default RolePermission;

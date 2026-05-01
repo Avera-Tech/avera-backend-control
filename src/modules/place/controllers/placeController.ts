@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
-import Place from '../models/Place.model';
 
 export async function createPlace(req: Request, res: Response): Promise<Response> {
   try {
+    const { Place } = req.tenantDb;
     const { name, address } = req.body;
 
     if (!name) {
@@ -27,6 +27,7 @@ export async function createPlace(req: Request, res: Response): Promise<Response
 
 export async function listPlaces(req: Request, res: Response): Promise<Response> {
   try {
+    const { Place } = req.tenantDb;
     const where: Record<string, unknown> = {};
     if (req.query.active !== undefined) where.active = req.query.active === 'true';
 
@@ -41,6 +42,7 @@ export async function listPlaces(req: Request, res: Response): Promise<Response>
 
 export async function updatePlace(req: Request, res: Response): Promise<Response> {
   try {
+    const { Place } = req.tenantDb;
     const place = await Place.findByPk(Number(req.params.id));
     if (!place) return res.status(404).json({ success: false, message: 'Local não encontrado' });
 

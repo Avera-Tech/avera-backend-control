@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import Joi from 'joi';
-import Staff from '../../staff/models/Staff.model';
 import { PasswordService } from '../services/PasswordService';
 import { sendEmail } from '../../../shared/services/EmailService';
 
@@ -36,6 +35,7 @@ export class PasswordController {
         return res.status(400).json({ success: false, error: error.details[0].message });
       }
 
+      const { Staff } = req.tenantDb;
       const staff = await Staff.findOne({
         where: { email: value.email.trim().toLowerCase() },
       });
@@ -72,7 +72,7 @@ export class PasswordController {
         return res.status(400).json({ success: false, error: error.details[0].message });
       }
 
-      const result = await PasswordService.resetPassword(value.token, value.newPassword);
+      const result = await PasswordService.resetPassword(value.token, value.newPassword, req.tenantDb);
       if (!result.success) {
         return res.status(400).json({ success: false, error: result.error });
       }
@@ -103,6 +103,7 @@ export class PasswordController {
         req.user.staffId,
         value.currentPassword,
         value.newPassword,
+        req.tenantDb,
         value.confirmPassword
       );
 

@@ -21,7 +21,7 @@ export class AuthController {
         return res.status(400).json({ success: false, error: error.details[0].message });
       }
 
-      const result = await AuthService.login(value.email, value.password);
+      const result = await AuthService.login(value.email, value.password, req.tenantDb);
 
       if (!result.success) {
         return res.status(401).json(result);

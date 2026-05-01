@@ -1,8 +1,4 @@
 import { Request, Response, NextFunction } from 'express';
-import Role from '../rbac/models/Role.model';
-import Permission from '../rbac/models/Permission.model';
-import UserRole from '../rbac/models/UserRole.model';
-import RolePermission from '../rbac/models/RolePermission.model';
 import { Op } from 'sequelize';
 
 export const checkPermissions = (
@@ -19,6 +15,7 @@ export const checkPermissions = (
       }
 
       const { staffId } = req.user;
+      const { UserRole, Role, RolePermission, Permission } = req.tenantDb;
 
       const staffRoles = await UserRole.findAll({
         where: {
@@ -102,6 +99,7 @@ export const checkRoles = (
       }
 
       const { staffId } = req.user;
+      const { UserRole, Role } = req.tenantDb;
 
       const staffRoles = await UserRole.findAll({
         where: {

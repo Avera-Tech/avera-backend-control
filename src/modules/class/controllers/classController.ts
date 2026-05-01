@@ -1,11 +1,6 @@
 import { Request, Response } from 'express';
 import { Op } from 'sequelize';
-import Class from '../models/Class.model';
-import ClassStudent from '../models/ClassStudent.model';
-import Staff from '../../../core/staff/models/Staff.model';
-import ProductType from '../../../core/products/models/ProductType.model';
-import Place from '../../../modules/place/models/Place.model';
-import ClientUser from '../../../modules/user/models/User.model';
+import { TenantDb } from '../../../config/tenantModels';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^\d{2}:\d{2}$/;
@@ -14,16 +9,16 @@ function todayString(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function includeTeacher() {
-  return { model: Staff, as: 'teacher', attributes: ['id', 'name'] };
+function includeTeacher(db: TenantDb) {
+  return { model: db.Staff, as: 'teacher', attributes: ['id', 'name'] };
 }
 
-function includeProductType() {
-  return { model: ProductType, as: 'productType', attributes: ['id', 'name', 'color'] };
+function includeProductType(db: TenantDb) {
+  return { model: db.ProductType, as: 'productType', attributes: ['id', 'name', 'color'] };
 }
 
-function includePlace() {
-  return { model: Place, as: 'place', attributes: ['id', 'name'] };
+function includePlace(db: TenantDb) {
+  return { model: db.Place, as: 'place', attributes: ['id', 'name'] };
 }
 
 function validateDatetime(date: unknown, time: unknown): string | null {
@@ -34,6 +29,7 @@ function validateDatetime(date: unknown, time: unknown): string | null {
 
 export async function createClass(req: Request, res: Response): Promise<Response> {
   try {
+    const { Class, Staff } = req.tenantDb;
     const { staff_id, product_type_id, date, time, limit, place_id, has_commission, kickback_rule, kickback } = req.body;
 
     if (!staff_id || !product_type_id || !date || !time || !limit) {
@@ -63,7 +59,7 @@ export async function createClass(req: Request, res: Response): Promise<Response
     });
 
     const data = await Class.findByPk(created.id, {
-      include: [includeTeacher(), includeProductType(), includePlace()],
+      include: [includeTeacher(req.tenantDb), includeProductType(req.tenantDb), includePlace(req.tenantDb)],
     });
 
     return res.status(201).json({ success: true, data, message: 'Aula criada com sucesso' });
@@ -79,6 +75,7 @@ export async function createClass(req: Request, res: Response): Promise<Response
 
 export async function listClasses(req: Request, res: Response): Promise<Response> {
   try {
+    const { Class } = req.tenantDb;
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
     const offset = (page - 1) * limit;
@@ -98,7 +95,7 @@ export async function listClasses(req: Request, res: Response): Promise<Response
 
     const { count, rows } = await Class.findAndCountAll({
       where,
-      include: [includeTeacher(), includeProductType(), includePlace()],
+      include: [includeTeacher(req.tenantDb), includeProductType(req.tenantDb), includePlace(req.tenantDb)],
       order: [['date', 'ASC'], ['time', 'ASC']],
       limit,
       offset,
@@ -123,11 +120,12 @@ export async function listClasses(req: Request, res: Response): Promise<Response
 
 export async function getClassById(req: Request, res: Response): Promise<Response> {
   try {
+    const { Class, ClassStudent, ClientUser } = req.tenantDb;
     const cls = await Class.findByPk(Number(req.params.id), {
       include: [
-        includeTeacher(),
-        includeProductType(),
-        includePlace(),
+        includeTeacher(req.tenantDb),
+        includeProductType(req.tenantDb),
+        includePlace(req.tenantDb),
         {
           model: ClassStudent,
           as: 'enrollments',
@@ -154,6 +152,7 @@ export async function getClassById(req: Request, res: Response): Promise<Respons
 
 export async function updateClass(req: Request, res: Response): Promise<Response> {
   try {
+    const { Class, Staff } = req.tenantDb;
     const cls = await Class.findByPk(Number(req.params.id));
     if (!cls) return res.status(404).json({ success: false, message: 'Aula não encontrada' });
 
@@ -195,7 +194,7 @@ export async function updateClass(req: Request, res: Response): Promise<Response
     await cls.update(updates);
 
     const data = await Class.findByPk(cls.id, {
-      include: [includeTeacher(), includeProductType(), includePlace()],
+      include: [includeTeacher(req.tenantDb), includeProductType(req.tenantDb), includePlace(req.tenantDb)],
     });
 
     return res.json({ success: true, data, message: 'Aula atualizada com sucesso' });
@@ -211,6 +210,7 @@ export async function updateClass(req: Request, res: Response): Promise<Response
 
 export async function cancelClass(req: Request, res: Response): Promise<Response> {
   try {
+    const { Class, ClassStudent } = req.tenantDb;
     const cls = await Class.findByPk(Number(req.params.id));
     if (!cls) return res.status(404).json({ success: false, message: 'Aula não encontrada' });
 
@@ -246,6 +246,7 @@ export async function cancelClass(req: Request, res: Response): Promise<Response
 
 export async function deleteClass(req: Request, res: Response): Promise<Response> {
   try {
+    const { Class, ClassStudent } = req.tenantDb;
     const cls = await Class.findByPk(Number(req.params.id));
     if (!cls) return res.status(404).json({ success: false, message: 'Aula não encontrada' });
 

@@ -1,9 +1,7 @@
 import { Request, Response } from 'express';
 import Joi from 'joi';
-import Product, { RecurringInterval } from '../models/Product.model';
-import ProductType from '../models/ProductType.model';
 
-// ─── Schemas de Validação ─────────────────────────────────────────────────────
+type RecurringInterval = 'weekly' | 'monthly' | 'quarterly' | 'semiannual' | 'annual';
 
 const RECURRING_INTERVALS: RecurringInterval[] = [
   'weekly', 'monthly', 'quarterly', 'semiannual', 'annual',
@@ -73,23 +71,15 @@ const updateSchema = Joi.object({
   .min(1)
   .messages({ 'object.min': 'Informe ao menos um campo para atualizar' });
 
-// ─── Constantes de Paginação ──────────────────────────────────────────────────
-
 const DEFAULT_PAGE     = 1;
 const DEFAULT_PER_PAGE = 20;
 const MAX_PER_PAGE     = 100;
 
-// ─── Controller ───────────────────────────────────────────────────────────────
-
 export class ProductController {
 
-  /**
-   * GET /products
-   * Lista paginada com tipo de produto populado (id, nome, cor)
-   * Query params: page, perPage, active, productTypeId
-   */
   static async list(req: Request, res: Response): Promise<Response> {
     try {
+      const { Product, ProductType } = req.tenantDb;
       const page    = Math.max(1, parseInt(req.query.page    as string) || DEFAULT_PAGE);
       const perPage = Math.min(
         MAX_PER_PAGE,
@@ -143,11 +133,9 @@ export class ProductController {
     }
   }
 
-  /**
-   * GET /products/:id
-   */
   static async getById(req: Request, res: Response): Promise<Response> {
     try {
+      const { Product, ProductType } = req.tenantDb;
       const { id } = req.params;
       const product = await Product.findByPk(Number(id), {
         include: [{ model: ProductType, as: 'productType', attributes: ['id', 'name', 'color'] }],
@@ -166,9 +154,6 @@ export class ProductController {
     }
   }
 
-  /**
-   * POST /products
-   */
   static async create(req: Request, res: Response): Promise<Response> {
     try {
       const { error, value } = createSchema.validate(req.body, { abortEarly: false });
@@ -179,6 +164,7 @@ export class ProductController {
         });
       }
 
+      const { Product, ProductType } = req.tenantDb;
       const {
         productTypeId, name, description,
         credits, value: productValue, validityDays,
@@ -227,9 +213,6 @@ export class ProductController {
     }
   }
 
-  /**
-   * PATCH /products/:id
-   */
   static async update(req: Request, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
@@ -249,6 +232,7 @@ export class ProductController {
         });
       }
 
+      const { Product, ProductType } = req.tenantDb;
       const product = await Product.findByPk(Number(id));
       if (!product) {
         return res.status(404).json({ success: false, error: 'Produto não encontrado' });
@@ -297,12 +281,9 @@ export class ProductController {
     }
   }
 
-  /**
-   * DELETE /products/:id
-   * Remove produto
-   */
   static async remove(req: Request, res: Response): Promise<Response> {
     try {
+      const { Product } = req.tenantDb;
       const { id } = req.params;
       const product = await Product.findByPk(Number(id));
       if (!product) {

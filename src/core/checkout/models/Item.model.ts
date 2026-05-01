@@ -1,5 +1,4 @@
-import { DataTypes, Model, Optional } from 'sequelize';
-import coreDB from '../../../config/database.core';
+import { Model, Optional } from 'sequelize';
 
 interface ItemAttributes {
   id: number;
@@ -33,57 +32,5 @@ class Item
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
-
-Item.init(
-  {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    itemId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    transactionId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    itemCode: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    description: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    quantity: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    amount: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    balance: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    status: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: 'concluído',
-    },
-    studentId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-  },
-  {
-    sequelize: coreDB,
-    tableName: 'items',
-    timestamps: true,
-  }
-);
 
 export default Item;

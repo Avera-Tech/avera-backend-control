@@ -1,5 +1,4 @@
-import { DataTypes, Model, Optional } from 'sequelize';
-import coreDB from '../../../config/database.core';
+import { Model, Optional } from 'sequelize';
 
 interface IntegrationConfigAttributes {
   id: number;
@@ -34,54 +33,6 @@ class IntegrationConfig
   public readonly updatedAt!: Date;
 }
 
-IntegrationConfig.init(
-  {
-    id: {
-      type: DataTypes.INTEGER.UNSIGNED,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    platform: {
-      type: DataTypes.ENUM('wellhub', 'totalpass'),
-      allowNull: false,
-      unique: true,
-    },
-    apiKey: {
-      type: DataTypes.STRING(500),
-      allowNull: false,
-      comment: 'API Key obtida via Tech Sales da plataforma',
-    },
-    gymId: {
-      type: DataTypes.STRING(100),
-      allowNull: false,
-      comment: 'ID do estabelecimento na plataforma parceira',
-    },
-    secretKey: {
-      type: DataTypes.STRING(500),
-      allowNull: false,
-      comment: 'Secret para validação HMAC-SHA1 do webhook (X-Gympass-Signature)',
-    },
-    autoAccept: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: true,
-    },
-    active: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
-    },
-    lastSyncAt: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
-  },
-  {
-    sequelize: coreDB,
-    tableName: 'integration_configs',
-    indexes: [{ unique: true, fields: ['platform'] }],
-  }
-);
 
 // IntegrationConfig.sync({ alter: true }); // Rodar uma vez para criar a tabela
 

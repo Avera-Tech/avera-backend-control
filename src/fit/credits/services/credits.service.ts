@@ -1,30 +1,25 @@
 import { Op, Transaction, fn, col } from 'sequelize';
-import coreDB from '../../../config/database.core';
-import StudentCredit from '../models/StudentCredit.model';
-import CreditTransaction from '../models/CreditTransaction.model';
-import Product from '../../../core/products/models/Product.model';
-
-// ─── Tipos ────────────────────────────────────────────────────────────────────
+import { TenantDb } from '../../../config/tenantModels';
 
 export type PurchaseInput = {
   userId: number;
-  productId: number;       // FK direto para products (não productType)
+  productId: number;
   quantity: number;
-  transactionId: string;   // ID da transação Pagar.me — salvo como note no ledger
-  origin?: string;         // 'Compra', 'Bônus', etc.
-  validityDays?: number;   // se omitido, busca no Product
+  transactionId: string;
+  origin?: string;
+  validityDays?: number;
 };
 
 export type ConsumeInput = {
   userId: number;
   productId: number;
   quantity: number;
-  referenceId?: number;    // id da aula, reserva, etc. (auditoria)
+  referenceId?: number;
 };
 
 export type CancelBatchInput = {
   userId: number;
-  creditId: number;        // id do StudentCredit
+  creditId: number;
 };
 
 export type ListCreditsFilter = {
@@ -39,33 +34,29 @@ export type CheckAvailabilityInput = {
   quantity: number;
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-async function withTx<T>(work: (t: Transaction) => Promise<T>): Promise<T> {
-  return coreDB.transaction(work);
+async function withTx<T>(db: TenantDb, work: (t: Transaction) => Promise<T>): Promise<T> {
+  return db.sequelize.transaction(work);
 }
 
-async function getValidityDays(productId: number, override?: number): Promise<number> {
+async function getValidityDays(productId: number, db: TenantDb, override?: number): Promise<number> {
   if (override !== undefined) return override;
-  const product = await Product.findByPk(productId);
+  const product = await db.Product.findByPk(productId);
   const raw = (product as any)?.validityDays ?? (product as any)?.validity ?? 365;
   const days = Number(raw);
   return Number.isFinite(days) ? days : 365;
 }
 
-// ─── Purchase ─────────────────────────────────────────────────────────────────
-
-export async function purchaseCredits(input: PurchaseInput) {
+export async function purchaseCredits(input: PurchaseInput, db: TenantDb) {
   const { userId, productId, quantity, transactionId, origin = 'Compra', validityDays } = input;
 
   if (quantity <= 0) throw new Error('quantity deve ser > 0.');
 
-  return withTx(async (t) => {
-    const days = await getValidityDays(productId, validityDays);
+  return withTx(db, async (t) => {
+    const days = await getValidityDays(productId, db, validityDays);
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + days);
 
-    const credit = await StudentCredit.create(
+    const credit = await db.StudentCredit.create(
       {
         userId,
         productId,
@@ -78,12 +69,11 @@ export async function purchaseCredits(input: PurchaseInput) {
       { transaction: t }
     );
 
-    // Registrar no ledger
-    await CreditTransaction.create(
+    await db.CreditTransaction.create(
       {
         studentCreditId: credit.id,
         userId,
-        delta: quantity,              // positivo = entrada
+        delta: quantity,
         reason: 'purchase',
         note: `${origin} — pagarme: ${transactionId}`,
       },
@@ -94,18 +84,15 @@ export async function purchaseCredits(input: PurchaseInput) {
   });
 }
 
-// ─── Consume (FEFO + lock) ────────────────────────────────────────────────────
-
-export async function consumeCredits(input: ConsumeInput) {
+export async function consumeCredits(input: ConsumeInput, db: TenantDb) {
   const { userId, productId, quantity, referenceId } = input;
 
   if (quantity <= 0) throw new Error('quantity deve ser > 0.');
 
-  return withTx(async (t) => {
+  return withTx(db, async (t) => {
     const now = new Date();
 
-    // Busca lotes válidos, não vencidos e com saldo — ordem FEFO (vence primeiro, consome primeiro)
-    const lots = await StudentCredit.findAll({
+    const lots = await db.StudentCredit.findAll({
       where: {
         userId,
         productId,
@@ -134,8 +121,7 @@ export async function consumeCredits(input: ConsumeInput) {
 
       await lot.save({ transaction: t });
 
-      // Ledger: delta negativo = saída
-      await CreditTransaction.create(
+      await db.CreditTransaction.create(
         {
           studentCreditId: lot.id,
           userId,
@@ -157,11 +143,9 @@ export async function consumeCredits(input: ConsumeInput) {
   });
 }
 
-// ─── Cancelar lote sem uso ────────────────────────────────────────────────────
-
-export async function cancelBatchIfUnused({ userId, creditId }: CancelBatchInput) {
-  return withTx(async (t) => {
-    const lot = await StudentCredit.findOne({
+export async function cancelBatchIfUnused({ userId, creditId }: CancelBatchInput, db: TenantDb) {
+  return withTx(db, async (t) => {
+    const lot = await db.StudentCredit.findOne({
       where: { id: creditId, userId },
       transaction: t,
       lock: t.LOCK.UPDATE,
@@ -172,7 +156,7 @@ export async function cancelBatchIfUnused({ userId, creditId }: CancelBatchInput
       throw new Error('Lote já possui consumo; não pode ser cancelado integralmente.');
     }
 
-    await CreditTransaction.create(
+    await db.CreditTransaction.create(
       {
         studentCreditId: lot.id,
         userId,
@@ -188,11 +172,9 @@ export async function cancelBatchIfUnused({ userId, creditId }: CancelBatchInput
   });
 }
 
-// ─── Estornar saldo remanescente do lote ──────────────────────────────────────
-
-export async function refundRemainingByBatch({ userId, creditId }: CancelBatchInput) {
-  return withTx(async (t) => {
-    const lot = await StudentCredit.findOne({
+export async function refundRemainingByBatch({ userId, creditId }: CancelBatchInput, db: TenantDb) {
+  return withTx(db, async (t) => {
+    const lot = await db.StudentCredit.findOne({
       where: { id: creditId, userId },
       transaction: t,
       lock: t.LOCK.UPDATE,
@@ -202,7 +184,7 @@ export async function refundRemainingByBatch({ userId, creditId }: CancelBatchIn
 
     const refund = lot.availableCredits;
 
-    await CreditTransaction.create(
+    await db.CreditTransaction.create(
       {
         studentCreditId: lot.id,
         userId,
@@ -221,13 +203,11 @@ export async function refundRemainingByBatch({ userId, creditId }: CancelBatchIn
   });
 }
 
-// ─── Expirar créditos vencidos (cron/admin) ───────────────────────────────────
-
-export async function expireDueCredits() {
+export async function expireDueCredits(db: TenantDb) {
   const now = new Date();
 
-  return withTx(async (t) => {
-    const expiredLots = await StudentCredit.findAll({
+  return withTx(db, async (t) => {
+    const expiredLots = await db.StudentCredit.findAll({
       where: {
         status: 'active',
         expiresAt: { [Op.lt]: now },
@@ -238,7 +218,7 @@ export async function expireDueCredits() {
     });
 
     for (const lot of expiredLots) {
-      await CreditTransaction.create(
+      await db.CreditTransaction.create(
         {
           studentCreditId: lot.id,
           userId: lot.userId,
@@ -261,12 +241,10 @@ export async function expireDueCredits() {
   });
 }
 
-// ─── Saldo disponível por produto ─────────────────────────────────────────────
-
-export async function getBalanceByProduct(userId: number) {
+export async function getBalanceByProduct(userId: number, db: TenantDb) {
   const now = new Date();
 
-  const rows = await StudentCredit.findAll({
+  const rows = await db.StudentCredit.findAll({
     attributes: [
       'productId',
       [fn('SUM', col('availableCredits')), 'available'],
@@ -287,15 +265,13 @@ export async function getBalanceByProduct(userId: number) {
   }));
 }
 
-// ─── Listar créditos do cliente ───────────────────────────────────────────────
-
-export async function listCustomerCredits(filter: ListCreditsFilter) {
+export async function listCustomerCredits(filter: ListCreditsFilter, db: TenantDb): Promise<any[]> {
   const where: any = { userId: filter.userId };
 
   if (filter.productId) where.productId = filter.productId;
   if (filter.status) where.status = filter.status;
 
-  return StudentCredit.findAll({
+  return db.StudentCredit.findAll({
     where,
     order: [
       ['status', 'ASC'],
@@ -305,15 +281,13 @@ export async function listCustomerCredits(filter: ListCreditsFilter) {
   });
 }
 
-// ─── Checar disponibilidade antes de reservar/consumir ───────────────────────
-
-export async function checkAvailability(input: CheckAvailabilityInput): Promise<boolean> {
+export async function checkAvailability(input: CheckAvailabilityInput, db: TenantDb): Promise<boolean> {
   const { userId, productId, quantity } = input;
   if (quantity <= 0) return true;
 
   const now = new Date();
 
-  const row = await StudentCredit.findOne({
+  const row = await db.StudentCredit.findOne({
     attributes: [[fn('SUM', col('availableCredits')), 'available']],
     where: {
       userId,
@@ -329,10 +303,8 @@ export async function checkAvailability(input: CheckAvailabilityInput): Promise<
   return available >= quantity;
 }
 
-// ─── Histórico de transações do cliente ──────────────────────────────────────
-
-export async function getCreditHistory(userId: number) {
-  return CreditTransaction.findAll({
+export async function getCreditHistory(userId: number, db: TenantDb): Promise<any[]> {
+  return db.CreditTransaction.findAll({
     where: { userId },
     order: [['createdAt', 'DESC']],
   });

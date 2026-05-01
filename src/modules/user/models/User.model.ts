@@ -1,5 +1,4 @@
-import { Model, DataTypes, Optional } from 'sequelize';
-import coreDB from '../../../config/database.core';
+import { Model, Optional } from 'sequelize';
 
 /**
  * Modelo de Cliente/Aluno — SEM login, perfil apenas.
@@ -66,86 +65,5 @@ class ClientUser
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
-
-ClientUser.init(
-  {
-    id: {
-      type: DataTypes.INTEGER.UNSIGNED,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    name: {
-      type: DataTypes.STRING(100),
-      allowNull: false,
-    },
-    email: {
-      type: DataTypes.STRING(150),
-      allowNull: false,
-      unique: true,
-    },
-    password: {
-      type: DataTypes.STRING(255),
-      allowNull: true,
-    },
-    phone: {
-      type: DataTypes.STRING(20),
-      allowNull: true,
-    },
-    document: {
-      type: DataTypes.STRING(14),
-      allowNull: true,
-      comment: 'CPF — formato 000.000.000-00',
-    },
-    birthday: {
-      type: DataTypes.DATEONLY,
-      allowNull: true,
-    },
-    height: {
-      type: DataTypes.DECIMAL(5, 2),
-      allowNull: true,
-      comment: 'Altura em metros (ex: 1.75)',
-    },
-    weight: {
-      type: DataTypes.DECIMAL(5, 2),
-      allowNull: true,
-      comment: 'Peso em kg (ex: 70.50)',
-    },
-    levelId: {
-      type: DataTypes.INTEGER.UNSIGNED,
-      allowNull: true,
-      references: { model: 'user_levels', key: 'id' },
-      onDelete: 'SET NULL',
-      onUpdate: 'CASCADE',
-    },
-    address: {
-      type: DataTypes.STRING(200),
-      allowNull: true,
-    },
-    city: {
-      type: DataTypes.STRING(100),
-      allowNull: true,
-    },
-    state: {
-      type: DataTypes.STRING(2),
-      allowNull: true,
-    },
-    zipCode: {
-      type: DataTypes.STRING(10),
-      allowNull: true,
-    },
-    active: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: true,
-    },
-  },
-  {
-    sequelize: coreDB,
-    tableName: 'users',
-    timestamps: true,
-    underscored: false,
-    indexes: [{ unique: true, fields: ['email'] }],
-  }
-);
 
 export default ClientUser;

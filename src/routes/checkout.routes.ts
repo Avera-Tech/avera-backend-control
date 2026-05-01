@@ -1,8 +1,7 @@
 import { Router } from 'express';
-// TODO: ajuste o path do middleware conforme sua estrutura
 import { authenticateToken } from '../core/middleware/authenticateToken';
 import { checkoutCard, checkoutCash } from '../core/checkout/controllers/Checkout.controller';
-import { checkoutPix, pixWebhook } from '../core/checkout/controllers/Pix.controller';
+import { checkoutPix } from '../core/checkout/controllers/Pix.controller';
 
 const router = Router();
 
@@ -121,17 +120,6 @@ router.post('/cash', authenticateToken, checkoutCash);
  *         description: QR Code PIX gerado. Aguardando pagamento.
  */
 router.post('/pix', authenticateToken, checkoutPix);
-
-/**
- * @swagger
- * /checkout/pix/webhook:
- *   post:
- *     summary: Webhook da Pagar.me para confirmação de PIX (sem autenticação)
- *     tags: [Checkout]
- *     responses:
- *       200:
- *         description: Webhook recebido
- */
-router.post('/pix/webhook', pixWebhook); // sem autenticação JWT — valida assinatura Pagar.me
+// /pix/webhook is mounted as a public route in routes/index.ts (before resolveTenant)
 
 export default router;

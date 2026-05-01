@@ -1,106 +1,60 @@
 import { Router, Request, Response } from 'express';
 
-import TenantConfig from '../master/models/TenantConfig.model';
-import Role            from '../core/rbac/models/Role.model';
-import Permission      from '../core/rbac/models/Permission.model';
-import Staff           from '../core/staff/models/Staff.model';
-import OtpCode         from '../core/auth/models/OtpCode.model';
-import UserRole        from '../core/rbac/models/UserRole.model';
-import RolePermission  from '../core/rbac/models/RolePermission.model';
-import ProductType     from '../core/products/models/ProductType.model';
-import Product         from '../core/products/models/Product.model';
-import UserLevel       from '../modules/user/models/UserLevel.model';
-import ClientUser      from '../modules/user/models/User.model';
-import UserGuardian    from '../modules/user/models/UserGuardian.model';
-import StudentCredit   from '../fit/credits/models/StudentCredit.model';
-import CreditTransaction from '../fit/credits/models/CreditTransaction.model';
-
 const router = Router();
 
-router.post('/', async (req: Request, res: Response) => {
-  const syncKey = req.headers['x-sync-key'];
+const TABLE_ORDER = [
+  'roles', 'permissions', 'role_permissions', 'staff', 'otp_codes', 'staff_roles',
+  'user_levels', 'users', 'user_guardians', 'product_types', 'products',
+  'places', 'product_type_places', 'classes', 'class_students', 'waiting_list',
+  'user_credits', 'credit_transactions', 'items', 'transactions',
+  'external_checkins', 'integration_configs',
+];
 
-  if (syncKey !== process.env.SYNC_SECRET_KEY) {
-    return res.status(401).json({
-      success: false,
-      error: 'Chave de sincronização inválida',
-    });
+router.post('/', async (req: Request, res: Response) => {
+  if (req.headers['x-sync-key'] !== process.env.SYNC_SECRET_KEY) {
+    return res.status(401).json({ success: false, error: 'Chave de sincronização inválida' });
   }
+
+  const { tenantDb } = req;
+  const modelByTable: Record<string, any> = {
+    roles:               tenantDb.Role,
+    permissions:         tenantDb.Permission,
+    role_permissions:    tenantDb.RolePermission,
+    staff:               tenantDb.Staff,
+    otp_codes:           tenantDb.OtpCode,
+    staff_roles:         tenantDb.UserRole,
+    user_levels:         tenantDb.UserLevel,
+    users:               tenantDb.ClientUser,
+    user_guardians:      tenantDb.UserGuardian,
+    product_types:       tenantDb.ProductType,
+    products:            tenantDb.Product,
+    places:              tenantDb.Place,
+    product_type_places: tenantDb.ProductTypePlace,
+    classes:             tenantDb.Class,
+    class_students:      tenantDb.ClassStudent,
+    waiting_list:        tenantDb.WaitingList,
+    user_credits:        tenantDb.StudentCredit,
+    credit_transactions: tenantDb.CreditTransaction,
+    items:               tenantDb.Item,
+    transactions:        tenantDb.Transaction,
+    external_checkins:   tenantDb.ExternalCheckin,
+    integration_configs: tenantDb.IntegrationConfig,
+  };
 
   const results: Record<string, string> = {};
 
-  // Ordem importa — pais antes dos filhos
-  const models = [
-    { name: 'roles',              model: Role },
-    { name: 'permissions',        model: Permission },
-    { name: 'role_permissions',   model: RolePermission },
-    { name: 'staff',              model: Staff },
-    { name: 'otp_codes',          model: OtpCode },
-    { name: 'staff_roles',        model: UserRole },
-    { name: 'product_types',      model: ProductType },
-    { name: 'products',           model: Product },
-    { name: 'user_levels',        model: UserLevel },
-    { name: 'users',              model: ClientUser },
-    { name: 'user_guardians',     model: UserGuardian },
-    { name: 'user_credits',       model: StudentCredit },
-    { name: 'credit_transactions', model: CreditTransaction },
-  ];
-
-  for (const { name, model } of models) {
+  for (const tableName of TABLE_ORDER) {
+    const model = modelByTable[tableName];
+    if (!model) { results[tableName] = '⏭️  pulado'; continue; }
     try {
-      await (model as any).sync({ alter: true });
-      results[name] = '✅ sincronizado';
+      await model.sync({ alter: true });
+      results[tableName] = '✅ sincronizado';
     } catch (error: any) {
-      results[name] = `❌ erro: ${error.message}`;
+      results[tableName] = `❌ erro: ${error.message}`;
     }
   }
 
-  return res.status(200).json({
-    success: true,
-    message: 'Sincronização concluída',
-    results,
-  });
-});
-
-router.post('/tenant-config', async (req: Request, res: Response) => {
-  const syncKey = req.headers['x-sync-key'];
-
-  if (syncKey !== process.env.SYNC_SECRET_KEY) {
-    return res.status(401).json({
-      success: false,
-      error: 'Chave de sincronização inválida',
-    });
-  }
-
-  const { clientId, planName, isActive, planExpiresAt, trialEndsAt, suspendedAt } = req.body;
-
-  if (!clientId || !planName || isActive === undefined || !planExpiresAt) {
-    return res.status(400).json({
-      success: false,
-      error: 'Campos obrigatórios: clientId, planName, isActive, planExpiresAt',
-    });
-  }
-
-  try {
-    await TenantConfig.upsert({
-      clientId,
-      planName,
-      isActive,
-      planExpiresAt: new Date(planExpiresAt),
-      trialEndsAt: trialEndsAt ? new Date(trialEndsAt) : null,
-      suspendedAt: suspendedAt ? new Date(suspendedAt) : null,
-    });
-
-    return res.status(200).json({
-      success: true,
-      message: 'Configuração do tenant atualizada',
-    });
-  } catch (error: any) {
-    return res.status(500).json({
-      success: false,
-      error: error.message,
-    });
-  }
+  return res.status(200).json({ success: true, message: 'Sincronização concluída', results });
 });
 
 export default router;

@@ -1,5 +1,4 @@
-import { Model, DataTypes, Optional } from 'sequelize';
-import coreDB from '../../../config/database.core';
+import { Model, Optional } from 'sequelize';
 
 interface PlaceAttributes {
   id: number;
@@ -25,33 +24,5 @@ class Place
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
-
-Place.init(
-  {
-    id: {
-      type: DataTypes.INTEGER.UNSIGNED,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    name: {
-      type: DataTypes.STRING(100),
-      allowNull: false,
-    },
-    address: {
-      type: DataTypes.STRING(200),
-      allowNull: true,
-    },
-    active: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: true,
-    },
-  },
-  {
-    sequelize: coreDB,
-    tableName: 'places',
-    timestamps: true,
-  }
-);
 
 export default Place;

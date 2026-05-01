@@ -1,19 +1,13 @@
-import { consumeCredits, purchaseCredits } from "../../../fit/credits/services/credits.service";
+import { TenantDb } from '../../../config/tenantModels';
+import { consumeCredits, purchaseCredits } from '../../../fit/credits/services/credits.service';
 
-
-/**
- * Wrapper de compatibilidade com o fluxo de checkout.
- *
- * ATENÇÃO — diferença do studio-backend:
- *   - idCustomer  → userId
- *   - productTypeId → productId  (FK direto para products, não productTypes)
- */
 export async function updateCustomerBalance(
   userId: number,
   quantity: number,
   transactionId: string,
   add: boolean,
-  productId: number
+  productId: number,
+  db: TenantDb
 ) {
   if (add) {
     return purchaseCredits({
@@ -22,8 +16,8 @@ export async function updateCustomerBalance(
       quantity,
       transactionId,
       origin: 'Compra',
-    });
+    }, db);
   }
 
-  return consumeCredits({ userId, productId, quantity });
+  return consumeCredits({ userId, productId, quantity }, db);
 }

@@ -1,5 +1,4 @@
-import { Model, DataTypes, Optional } from 'sequelize';
-import coreDB from '../../../config/database.core';
+import { Model, Optional } from 'sequelize';
 
 interface PermissionAttributes {
   id: number;
@@ -27,63 +26,5 @@ class Permission extends Model<PermissionAttributes, PermissionCreationAttribute
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
-
-Permission.init(
-  {
-    id: {
-      type: DataTypes.INTEGER.UNSIGNED,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    name: {
-      type: DataTypes.STRING(100),
-      allowNull: false,
-      unique: true,
-    },
-    slug: {
-      type: DataTypes.STRING(100),
-      allowNull: false,
-      unique: true,
-      comment: 'Formato: resource:action (ex: users:create, reports:read)',
-    },
-    resource: {
-      type: DataTypes.STRING(50),
-      allowNull: false,
-      comment: 'Recurso ao qual a permissão se aplica (ex: users, products, reports)',
-    },
-    action: {
-      type: DataTypes.STRING(50),
-      allowNull: false,
-      comment: 'Ação permitida (ex: create, read, update, delete, list)',
-    },
-    description: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-    active: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: true,
-    },
-  },
-  {
-    sequelize: coreDB,
-    tableName: 'permissions',
-    timestamps: true,
-    underscored: false,
-    indexes: [
-      {
-        unique: true,
-        fields: ['slug'],
-      },
-      {
-        fields: ['resource'],
-      },
-      {
-        fields: ['action'],
-      },
-    ],
-  }
-);
 
 export default Permission;

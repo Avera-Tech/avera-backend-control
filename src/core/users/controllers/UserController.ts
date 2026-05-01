@@ -2,13 +2,7 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import Joi from 'joi';
 import { Op } from 'sequelize';
-import User from '../models/User.model';
-import Role from '../../rbac/models/Role.model';
-import UserRole from '../../rbac/models/UserRole.model';
-
-// ─────────────────────────────────────────────
-// Schemas de validação
-// ─────────────────────────────────────────────
+import { TenantDb } from '../../../config/tenantModels';
 
 const createUserSchema = Joi.object({
   name: Joi.string().min(3).max(100).required().messages({
@@ -85,12 +79,9 @@ const resetPasswordSchema = Joi.object({
     }),
 });
 
-// ─────────────────────────────────────────────
-// Helper: buscar usuário com roles
-// ─────────────────────────────────────────────
-
-async function findUserWithRoles(id: number) {
-  return User.findByPk(id, {
+async function findUserWithRoles(id: number, db: TenantDb) {
+  const { Staff, Role } = db;
+  return Staff.findByPk(id, {
     attributes: { exclude: ['password'] },
     include: [
       {
@@ -103,21 +94,12 @@ async function findUserWithRoles(id: number) {
   });
 }
 
-// ─────────────────────────────────────────────
-// Controller
-// ─────────────────────────────────────────────
-
 export class UserController {
-  /**
-   * GET /users
-   * Lista todos os usuários (empregados e professores)
-   * Requer: users:list
-   */
   static async list(req: Request, res: Response): Promise<Response> {
     try {
+      const { Staff, Role } = req.tenantDb;
       const { role, active, search } = req.query;
 
-      // Filtro de busca por nome ou email
       const whereClause: any = {};
       if (active !== undefined) {
         whereClause.active = active === 'true';
@@ -129,13 +111,12 @@ export class UserController {
         ];
       }
 
-      // Filtro por role (employee / teacher / admin)
       const roleFilter: any = {};
       if (role) {
         roleFilter.slug = role;
       }
 
-      const users = await User.findAll({
+      const users = await Staff.findAll({
         attributes: { exclude: ['password'] },
         where: whereClause,
         include: [
@@ -166,16 +147,10 @@ export class UserController {
     }
   }
 
-  /**
-   * GET /users/:id
-   * Retorna um usuário pelo ID
-   * Requer: users:read
-   */
   static async getById(req: Request, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-
-      const user = await findUserWithRoles(Number(id));
+      const user = await findUserWithRoles(Number(id), req.tenantDb);
 
       if (!user) {
         return res.status(404).json({
@@ -194,14 +169,8 @@ export class UserController {
     }
   }
 
-  /**
-   * POST /users
-   * Cria um novo usuário (empregado ou professor do CT)
-   * Requer: users:create
-   */
   static async create(req: Request, res: Response): Promise<Response> {
     try {
-      // 1. Validar dados
       const { error, value } = createUserSchema.validate(req.body);
       if (error) {
         return res.status(400).json({
@@ -210,11 +179,11 @@ export class UserController {
         });
       }
 
+      const { Staff, Role, UserRole } = req.tenantDb;
       const { name, email, password, role: roleSlug, active } = value;
 
-      // 2. Verificar se email já existe
       const normalizedEmail = email.trim().toLowerCase();
-      const existing = await User.findOne({ where: { email: normalizedEmail } });
+      const existing = await Staff.findOne({ where: { email: normalizedEmail } });
       if (existing) {
         return res.status(409).json({
           success: false,
@@ -222,7 +191,6 @@ export class UserController {
         });
       }
 
-      // 3. Buscar role no banco
       const role = await Role.findOne({ where: { slug: roleSlug, active: true } });
       if (!role) {
         return res.status(400).json({
@@ -231,28 +199,24 @@ export class UserController {
         });
       }
 
-      // 4. Hash da senha
       const saltRounds = Number(process.env.BCRYPT_ROUNDS) || 10;
       const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-      // 5. Criar usuário
-      const user = await User.create({
+      const user = await Staff.create({
         name: name.trim(),
         email: normalizedEmail,
         password: hashedPassword,
         active,
-        emailVerified: true, // usuários criados internamente já são verificados
+        emailVerified: true,
       });
 
-      // 6. Atribuir role
       await UserRole.create({
         staffId: user.id,
         roleId: role.id,
         assignedBy: (req as any).user?.userId ?? null,
       });
 
-      // 7. Retornar usuário com roles
-      const userWithRoles = await findUserWithRoles(user.id);
+      const userWithRoles = await findUserWithRoles(user.id, req.tenantDb);
 
       return res.status(201).json({
         success: true,
@@ -269,16 +233,10 @@ export class UserController {
     }
   }
 
-  /**
-   * PUT /users/:id
-   * Atualiza dados de um usuário (nome, email, role, active)
-   * Requer: users:update
-   */
   static async update(req: Request, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
 
-      // 1. Validar dados
       const { error, value } = updateUserSchema.validate(req.body);
       if (error) {
         return res.status(400).json({
@@ -287,8 +245,9 @@ export class UserController {
         });
       }
 
-      // 2. Buscar usuário
-      const user = await User.findByPk(Number(id));
+      const { Staff, Role, UserRole } = req.tenantDb;
+
+      const user = await Staff.findByPk(Number(id));
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -298,10 +257,9 @@ export class UserController {
 
       const { name, email, role: roleSlug, active } = value;
 
-      // 3. Verificar email duplicado
       if (email) {
         const normalizedEmail = email.trim().toLowerCase();
-        const emailInUse = await User.findOne({
+        const emailInUse = await Staff.findOne({
           where: { email: normalizedEmail, id: { [Op.ne]: Number(id) } },
         });
         if (emailInUse) {
@@ -318,7 +276,6 @@ export class UserController {
 
       await user.save();
 
-      // 4. Atualizar role se fornecida
       if (roleSlug) {
         const newRole = await Role.findOne({ where: { slug: roleSlug, active: true } });
         if (!newRole) {
@@ -328,7 +285,6 @@ export class UserController {
           });
         }
 
-        // Remove roles antigas e atribui a nova
         await UserRole.destroy({ where: { staffId: user.id } });
         await UserRole.create({
           staffId: user.id,
@@ -337,8 +293,7 @@ export class UserController {
         });
       }
 
-      // 5. Retornar dados atualizados
-      const updatedUser = await findUserWithRoles(user.id);
+      const updatedUser = await findUserWithRoles(user.id, req.tenantDb);
 
       return res.json({
         success: true,
@@ -354,17 +309,11 @@ export class UserController {
     }
   }
 
-  /**
-   * DELETE /users/:id
-   * Desativa um usuário (soft delete via active = false)
-   * Requer: users:delete
-   */
   static async remove(req: Request, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
       const requesterId = (req as any).user?.userId;
 
-      // Impedir auto-exclusão
       if (Number(id) === requesterId) {
         return res.status(400).json({
           success: false,
@@ -372,7 +321,8 @@ export class UserController {
         });
       }
 
-      const user = await User.findByPk(Number(id));
+      const { Staff } = req.tenantDb;
+      const user = await Staff.findByPk(Number(id));
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -396,16 +346,12 @@ export class UserController {
     }
   }
 
-  /**
-   * PATCH /users/:id/activate
-   * Reativa um usuário desativado
-   * Requer: users:update
-   */
   static async activate(req: Request, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
+      const { Staff } = req.tenantDb;
 
-      const user = await User.findByPk(Number(id));
+      const user = await Staff.findByPk(Number(id));
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -426,11 +372,6 @@ export class UserController {
     }
   }
 
-  /**
-   * PATCH /users/me/password
-   * Usuário logado altera a própria senha
-   * Requer: autenticação (sem permissão especial)
-   */
   static async changePassword(req: Request, res: Response): Promise<Response> {
     try {
       const requesterId = (req as any).user?.userId;
@@ -441,13 +382,13 @@ export class UserController {
       }
 
       const { currentPassword, newPassword } = value;
+      const { Staff } = req.tenantDb;
 
-      const user = await User.findByPk(requesterId);
+      const user = await Staff.findByPk(requesterId);
       if (!user) {
         return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
       }
 
-      // Verificar senha atual
       const match = await bcrypt.compare(currentPassword, user.password);
       if (!match) {
         return res.status(401).json({ success: false, error: 'Senha atual incorreta' });
@@ -464,11 +405,6 @@ export class UserController {
     }
   }
 
-  /**
-   * PATCH /users/:id/reset-password
-   * Admin redefine a senha de qualquer usuário
-   * Requer: users:update
-   */
   static async resetPassword(req: Request, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
@@ -478,7 +414,8 @@ export class UserController {
         return res.status(400).json({ success: false, error: error.details[0].message });
       }
 
-      const user = await User.findByPk(Number(id));
+      const { Staff } = req.tenantDb;
+      const user = await Staff.findByPk(Number(id));
       if (!user) {
         return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
       }

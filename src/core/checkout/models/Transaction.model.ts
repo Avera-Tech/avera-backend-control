@@ -1,5 +1,4 @@
-import { DataTypes, Model, Optional } from 'sequelize';
-import coreDB from '../../../config/database.core';
+import { Model, Optional } from 'sequelize';
 
 interface TransactionAttributes {
   transactionId: string;
@@ -59,100 +58,5 @@ class Transaction
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
-
-Transaction.init(
-  {
-    transactionId: {
-      type: DataTypes.STRING,
-      primaryKey: true,
-      allowNull: false,
-    },
-    status: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    transactionType: {
-      type: DataTypes.INTEGER, // 1 = crédito, 2 = débito
-      allowNull: false,
-    },
-    transactionCode: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    chargeId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    balance: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    amount: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    currency: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    payment_method: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    closed: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-    },
-    customerId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    studentId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    customerName: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    customerEmail: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    customerDocument: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    productTypeId: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
-    discountType: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
-    discountPercent: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
-    discountAmount: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
-    closedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-    },
-    paidAt: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
-  },
-  {
-    sequelize: coreDB,
-    tableName: 'transactions',
-    timestamps: true,
-  }
-);
 
 export default Transaction;

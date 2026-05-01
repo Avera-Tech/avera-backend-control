@@ -1,5 +1,4 @@
-import { Model, DataTypes, Optional } from 'sequelize';
-import coreDB from '../../../config/database.core';
+import { Model, Optional } from 'sequelize';
 
 interface UserGuardianAttributes {
   id: number;
@@ -32,48 +31,5 @@ class UserGuardian
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
-
-UserGuardian.init(
-  {
-    id: {
-      type: DataTypes.INTEGER.UNSIGNED,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    studentId: {
-      type: DataTypes.INTEGER.UNSIGNED,
-      allowNull: false,
-      references: { model: 'users', key: 'id' },
-      onDelete: 'CASCADE',
-      onUpdate: 'CASCADE',
-    },
-    guardianUserId: {
-      type: DataTypes.INTEGER.UNSIGNED,
-      allowNull: true,
-      references: { model: 'users', key: 'id' },
-      onDelete: 'SET NULL',
-      onUpdate: 'CASCADE',
-    },
-    name: {
-      type: DataTypes.STRING(100),
-      allowNull: true,
-    },
-    phone: {
-      type: DataTypes.STRING(20),
-      allowNull: true,
-    },
-    document: {
-      type: DataTypes.STRING(14),
-      allowNull: true,
-      comment: 'CPF',
-    },
-  },
-  {
-    sequelize: coreDB,
-    tableName: 'user_guardians',
-    timestamps: true,
-    underscored: false,
-  }
-);
 
 export default UserGuardian;

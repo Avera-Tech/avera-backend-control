@@ -1,21 +1,11 @@
 import { Request, Response } from 'express';
 import { Op } from 'sequelize';
-import coreDB from '../../../config/database.core';
-import StudentCredit from '../models/StudentCredit.model';
-import CreditTransaction from '../models/CreditTransaction.model';
-import ClientUser from '../../../modules/user/models/User.model';
-import Product from '../../../core/products/models/Product.model';
-import ProductType from '../../../core/products/models/ProductType.model';
 
 export class CreditController {
 
-  // ─── POST /users/:id/credits ──────────────────────────────────────────────────
-  /**
-   * Recebe productId, cria lote de créditos e registra transação com reason = 'purchase'.
-   * Toda a operação é atômica via transaction Sequelize.
-   */
   static async assignCredits(req: Request, res: Response): Promise<Response> {
-    const t = await coreDB.transaction();
+    const { ClientUser, Product, StudentCredit, CreditTransaction, sequelize } = req.tenantDb;
+    const t = await sequelize.transaction();
     try {
       const userId = Number(req.params.id);
       const { productId } = req.body;
@@ -74,7 +64,7 @@ export class CreditController {
         message: 'Créditos atribuídos com sucesso',
         credit: {
           id:               credit.id,
-          userId:         credit.userId,
+          userId:           credit.userId,
           productId:        credit.productId,
           totalCredits:     credit.totalCredits,
           usedCredits:      credit.usedCredits,
@@ -95,12 +85,9 @@ export class CreditController {
     }
   }
 
-  // ─── GET /users/:id/credits ───────────────────────────────────────────────────
-  /**
-   * Retorna todos os lotes do cliente com total consolidado de créditos disponíveis.
-   */
   static async getClientCredits(req: Request, res: Response): Promise<Response> {
     try {
+      const { ClientUser, StudentCredit, Product, ProductType } = req.tenantDb;
       const userId = Number(req.params.id);
 
       const client = await ClientUser.findByPk(userId);
@@ -151,13 +138,9 @@ export class CreditController {
     }
   }
 
-  // ─── POST /users/:id/credits/consume ─────────────────────────────────────────
-  /**
-   * Debita 1 crédito do lote mais próximo de vencer (FEFO).
-   * Retorna 400 se saldo insuficiente.
-   */
   static async consumeCredit(req: Request, res: Response): Promise<Response> {
-    const t = await coreDB.transaction();
+    const { ClientUser, StudentCredit, CreditTransaction, sequelize } = req.tenantDb;
+    const t = await sequelize.transaction();
     try {
       const userId = Number(req.params.id);
       const { referenceId, note } = req.body;

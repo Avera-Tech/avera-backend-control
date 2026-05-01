@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
-import ExternalCheckin from '../models/ExternalCheckin.model';
-import IntegrationConfig from '../models/IntegrationConfig.model';
+import { getTenantDb } from '../../../config/tenantConnectionManager';
+import TenantConfig from '../../../master/models/TenantConfig.model';
 import {
   validateWellhubSignature,
   getWellhubConfig,
@@ -12,34 +12,40 @@ import {
 
 const router = Router();
 
-// ─── WEBHOOK ─────────────────────────────────────────────────────────────────
+// ─── PUBLIC WEBHOOK ───────────────────────────────────────────────────────────
+// POST /api/webhooks/wellhub/:clientId/checkin
+// Called by Wellhub — no X-Client-Id or JWT auth.
+// clientId in the URL identifies the tenant (configure this URL in Wellhub dashboard).
 
-/**
- * POST /api/webhooks/wellhub/checkin
- *
- * Endpoint público chamado pela Wellhub quando um usuário faz check-in.
- * NÃO deve ter autenticação JWT — a segurança é feita pela assinatura HMAC.
- *
- * Requisito: precisa do body cru (raw buffer) para validar a assinatura.
- * No app.ts, adicionar antes do express.json():
- *   app.use('/api/webhooks', express.raw({ type: 'application/json' }));
- */
-router.post('/wellhub/checkin', async (req: Request, res: Response) => {
+router.post('/wellhub/:clientId/checkin', async (req: Request, res: Response) => {
   try {
-    // O body deve chegar como Buffer (express.raw) nesta rota
+    const { clientId } = req.params;
+
     const rawBody = req.body instanceof Buffer
       ? req.body.toString('utf8')
       : JSON.stringify(req.body);
 
-    // 1. Busca configuração da integração
-    const config = await getWellhubConfig();
-    if (!config) {
-      console.warn('[Wellhub Webhook] Integração não configurada ou inativa');
-      // Responde 200 para a Wellhub não ficar reenviando (mas não processa)
+    const tenantConfig = await TenantConfig.findOne({ where: { clientId } });
+    if (!tenantConfig) {
+      console.warn(`[Wellhub Webhook] Tenant '${clientId}' não encontrado`);
       return res.status(200).json({ received: true });
     }
 
-    // 2. Valida assinatura HMAC-SHA1
+    const db = getTenantDb({
+      clientId: tenantConfig.clientId,
+      dbHost: tenantConfig.dbHost,
+      dbPort: tenantConfig.dbPort,
+      dbUser: tenantConfig.dbUser,
+      dbPass: tenantConfig.dbPass,
+      dbName: tenantConfig.dbName,
+    });
+
+    const config = await getWellhubConfig(db);
+    if (!config) {
+      console.warn('[Wellhub Webhook] Integração não configurada ou inativa');
+      return res.status(200).json({ received: true });
+    }
+
     const signature = req.headers['x-gympass-signature'] as string;
     if (!signature) {
       console.warn('[Wellhub Webhook] Header X-Gympass-Signature ausente');
@@ -52,20 +58,15 @@ router.post('/wellhub/checkin', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Assinatura inválida' });
     }
 
-    // 3. Parse do payload
     const payload: WellhubCheckinPayload = JSON.parse(rawBody);
 
     if (!payload.gympass_id) {
       return res.status(400).json({ error: 'gympass_id é obrigatório' });
     }
 
-    // 4. Processa o check-in (busca user, cria registro, valida se autoAccept=true)
-    // IMPORTANTE: responder em < 1s para a Wellhub não considerar timeout.
-    // Por isso respondemos antes e processamos de forma assíncrona.
     res.status(200).json({ received: true });
 
-    // Processamento assíncrono após o response
-    processWellhubCheckin(payload, rawBody, config).catch((err) => {
+    processWellhubCheckin(payload, rawBody, config, db).catch((err) => {
       console.error('[Wellhub Webhook] Erro no processamento:', err);
     });
 
@@ -76,14 +77,11 @@ router.post('/wellhub/checkin', async (req: Request, res: Response) => {
   }
 });
 
-// ─── GERENCIAMENTO DE CHECK-INS ───────────────────────────────────────────────
+// ─── TENANT-AUTHENTICATED ROUTES ─────────────────────────────────────────────
 
-/**
- * GET /api/integrations/checkins
- * Lista check-ins externos com filtros opcionais.
- */
 router.get('/checkins', async (req: Request, res: Response) => {
   try {
+    const { ExternalCheckin } = req.tenantDb;
     const { platform, status, limit = '50', offset = '0' } = req.query;
 
     const where: any = {};
@@ -115,14 +113,10 @@ router.get('/checkins', async (req: Request, res: Response) => {
   }
 });
 
-/**
- * POST /api/integrations/checkins/:id/accept
- * Aceita manualmente um check-in pendente (valida na API da Wellhub).
- */
 router.post('/checkins/:id/accept', async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
-    const result = await manuallyAcceptCheckin(id);
+    const result = await manuallyAcceptCheckin(id, req.tenantDb);
 
     if (!result.success) {
       return res.status(400).json({ success: false, message: result.error });
@@ -135,14 +129,10 @@ router.post('/checkins/:id/accept', async (req: Request, res: Response) => {
   }
 });
 
-/**
- * POST /api/integrations/checkins/:id/reject
- * Rejeita manualmente um check-in pendente.
- */
 router.post('/checkins/:id/reject', async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
-    const result = await manuallyRejectCheckin(id);
+    const result = await manuallyRejectCheckin(id, req.tenantDb);
 
     if (!result.success) {
       return res.status(400).json({ success: false, message: result.error });
@@ -155,12 +145,9 @@ router.post('/checkins/:id/reject', async (req: Request, res: Response) => {
   }
 });
 
-/**
- * POST /api/integrations/checkins/accept-all
- * Aceita todos os check-ins pendentes de uma vez.
- */
 router.post('/checkins/accept-all', async (req: Request, res: Response) => {
   try {
+    const { ExternalCheckin } = req.tenantDb;
     const { platform } = req.body;
 
     const where: any = { status: 'pending' };
@@ -169,7 +156,7 @@ router.post('/checkins/accept-all', async (req: Request, res: Response) => {
     const pending = await ExternalCheckin.findAll({ where });
 
     const results = await Promise.allSettled(
-      pending.map((c) => manuallyAcceptCheckin(c.id))
+      pending.map((c) => manuallyAcceptCheckin(c.id, req.tenantDb))
     );
 
     const accepted = results.filter(
@@ -188,17 +175,11 @@ router.post('/checkins/accept-all', async (req: Request, res: Response) => {
   }
 });
 
-// ─── CONFIGURAÇÃO ─────────────────────────────────────────────────────────────
-
-/**
- * GET /api/integrations/config
- * Lista configurações de todas as integrações.
- */
-router.get('/config', async (_req: Request, res: Response) => {
+router.get('/config', async (req: Request, res: Response) => {
   try {
+    const { IntegrationConfig } = req.tenantDb;
     const configs = await IntegrationConfig.findAll({
       attributes: ['id', 'platform', 'gymId', 'autoAccept', 'active', 'lastSyncAt'],
-      // Nunca retorna apiKey e secretKey na listagem
     });
 
     return res.status(200).json({ success: true, data: configs });
@@ -207,13 +188,9 @@ router.get('/config', async (_req: Request, res: Response) => {
   }
 });
 
-/**
- * PUT /api/integrations/config/:platform
- * Salva ou atualiza configuração de uma integração.
- * Body: { apiKey, gymId, secretKey, autoAccept, active }
- */
 router.put('/config/:platform', async (req: Request, res: Response) => {
   try {
+    const { IntegrationConfig } = req.tenantDb;
     const { platform } = req.params;
     const { apiKey, gymId, secretKey, autoAccept, active } = req.body;
 

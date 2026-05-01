@@ -1,5 +1,4 @@
-import { Model, DataTypes, Optional } from 'sequelize';
-import coreDB from '../../../config/database.core';
+import { Model, Optional } from 'sequelize';
 
 interface UserLevelAttributes {
   id: number;
@@ -27,40 +26,5 @@ class UserLevel
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
-
-UserLevel.init(
-  {
-    id: {
-      type: DataTypes.INTEGER.UNSIGNED,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    name: {
-      type: DataTypes.STRING(50),
-      allowNull: false,
-    },
-    color: {
-      type: DataTypes.STRING(20),
-      allowNull: true,
-      comment: 'Cor em hex para o frontend (ex: #FF5733)',
-    },
-    numberOfClasses: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      comment: 'Número de aulas para atingir este nível',
-    },
-    active: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: true,
-    },
-  },
-  {
-    sequelize: coreDB,
-    tableName: 'user_levels',
-    timestamps: true,
-    underscored: false,
-  }
-);
 
 export default UserLevel;

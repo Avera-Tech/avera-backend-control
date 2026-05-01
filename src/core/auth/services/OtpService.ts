@@ -1,12 +1,13 @@
 import bcrypt from 'bcryptjs';
-import OtpCode from '../models/OtpCode.model';
+import { TenantDb } from '../../../config/tenantModels';
 import { sendEmail } from '../../../shared/services/EmailService';
 
 const OTP_EXPIRY_MINUTES = 10;
 const MAX_ATTEMPTS = 5;
 
 export class OtpService {
-  static async sendOtp(staffId: number, email: string): Promise<void> {
+  static async sendOtp(staffId: number, email: string, db: TenantDb): Promise<void> {
+    const { OtpCode } = db;
     await OtpCode.destroy({ where: { staffId, purpose: 'reset_password' } });
 
     const code = String(Math.floor(100000 + Math.random() * 900000));
@@ -25,8 +26,10 @@ export class OtpService {
 
   static async verifyOtp(
     staffId: number,
-    code: string
+    code: string,
+    db: TenantDb
   ): Promise<{ success: boolean; error?: string }> {
+    const { OtpCode } = db;
     const otp = await OtpCode.findOne({
       where: { staffId, purpose: 'reset_password' },
       order: [['createdAt', 'DESC']],

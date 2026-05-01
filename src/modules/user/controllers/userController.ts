@@ -1,35 +1,29 @@
 import { Request, Response } from 'express';
 import { randomUUID } from 'crypto';
 import { Op } from 'sequelize';
-import ClientUser from '../models/User.model';
-import UserLevel from '../models/UserLevel.model';
-import UserGuardian from '../models/UserGuardian.model';
-import StudentCredit from '../../../fit/credits/models/StudentCredit.model';
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+import { TenantDb } from '../../../config/tenantModels';
 
 const levelAttributes = ['id', 'name', 'color'];
 
-function withLevel() {
-  return { model: UserLevel, as: 'level', attributes: levelAttributes };
+function withLevel(db: TenantDb) {
+  return { model: db.UserLevel, as: 'level', attributes: levelAttributes };
 }
 
-function withGuardians() {
+function withGuardians(db: TenantDb) {
   return {
-    model: UserGuardian,
+    model: db.UserGuardian,
     as: 'guardians',
     include: [{
-      model: ClientUser,
+      model: db.ClientUser,
       as: 'guardianUser',
       attributes: ['id', 'name', 'email', 'phone'],
     }],
   };
 }
 
-// ─── createUser ───────────────────────────────────────────────────────────────
-
 export async function createUser(req: Request, res: Response): Promise<Response> {
   try {
+    const { ClientUser, UserGuardian } = req.tenantDb;
     const { name, email, phone, document, birthday, height, weight, levelId, address, city, state, zipCode, guardian } = req.body;
 
     if (!name || !email) {
@@ -68,7 +62,7 @@ export async function createUser(req: Request, res: Response): Promise<Response>
       });
     }
 
-    const data = await ClientUser.findByPk(user.id, { include: [withLevel(), withGuardians()] });
+    const data = await ClientUser.findByPk(user.id, { include: [withLevel(req.tenantDb), withGuardians(req.tenantDb)] });
 
     return res.status(201).json({ success: true, data, message: 'Cliente criado com sucesso' });
   } catch (err: unknown) {
@@ -81,10 +75,9 @@ export async function createUser(req: Request, res: Response): Promise<Response>
   }
 }
 
-// ─── listUsers ────────────────────────────────────────────────────────────────
-
 export async function listUsers(req: Request, res: Response): Promise<Response> {
   try {
+    const { ClientUser } = req.tenantDb;
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
     const offset = (page - 1) * limit;
@@ -111,7 +104,7 @@ export async function listUsers(req: Request, res: Response): Promise<Response> 
 
     const { count, rows } = await ClientUser.findAndCountAll({
       where,
-      include: [withLevel()],
+      include: [withLevel(req.tenantDb)],
       order: [['name', 'ASC']],
       limit,
       offset,
@@ -133,12 +126,11 @@ export async function listUsers(req: Request, res: Response): Promise<Response> 
   }
 }
 
-// ─── getUserById ──────────────────────────────────────────────────────────────
-
 export async function getUserById(req: Request, res: Response): Promise<Response> {
   try {
+    const { ClientUser, UserGuardian, StudentCredit } = req.tenantDb;
     const user = await ClientUser.findByPk(Number(req.params.id), {
-      include: [withLevel()],
+      include: [withLevel(req.tenantDb)],
     });
 
     if (!user) {
@@ -166,10 +158,9 @@ export async function getUserById(req: Request, res: Response): Promise<Response
   }
 }
 
-// ─── updateUser ───────────────────────────────────────────────────────────────
-
 export async function updateUser(req: Request, res: Response): Promise<Response> {
   try {
+    const { ClientUser, UserGuardian } = req.tenantDb;
     const user = await ClientUser.findByPk(Number(req.params.id));
     if (!user) {
       return res.status(404).json({ success: false, message: 'Cliente não encontrado' });
@@ -217,7 +208,7 @@ export async function updateUser(req: Request, res: Response): Promise<Response>
       }
     }
 
-    const data = await ClientUser.findByPk(user.id, { include: [withLevel(), withGuardians()] });
+    const data = await ClientUser.findByPk(user.id, { include: [withLevel(req.tenantDb), withGuardians(req.tenantDb)] });
 
     return res.json({ success: true, data, message: 'Cliente atualizado com sucesso' });
   } catch (err: unknown) {
@@ -226,10 +217,9 @@ export async function updateUser(req: Request, res: Response): Promise<Response>
   }
 }
 
-// ─── deleteUser ───────────────────────────────────────────────────────────────
-
 export async function deleteUser(req: Request, res: Response): Promise<Response> {
   try {
+    const { ClientUser, UserGuardian } = req.tenantDb;
     const user = await ClientUser.findByPk(Number(req.params.id));
     if (!user) {
       return res.status(404).json({ success: false, message: 'Cliente não encontrado' });
@@ -257,10 +247,9 @@ export async function deleteUser(req: Request, res: Response): Promise<Response>
   }
 }
 
-// ─── listLevels ───────────────────────────────────────────────────────────────
-
-export async function listLevels(_req: Request, res: Response): Promise<Response> {
+export async function listLevels(req: Request, res: Response): Promise<Response> {
   try {
+    const { UserLevel } = req.tenantDb;
     const levels = await UserLevel.findAll({
       where: { active: true },
       attributes: ['id', 'name', 'color', 'numberOfClasses'],
@@ -274,10 +263,9 @@ export async function listLevels(_req: Request, res: Response): Promise<Response
   }
 }
 
-// ─── getUsersDropdown ─────────────────────────────────────────────────────────
-
-export async function getUsersDropdown(_req: Request, res: Response): Promise<Response> {
+export async function getUsersDropdown(req: Request, res: Response): Promise<Response> {
   try {
+    const { ClientUser } = req.tenantDb;
     const users = await ClientUser.findAll({
       where: { active: true },
       attributes: ['id', 'name'],
