@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import authRoutes from './auth.routes';
 import syncRoutes from './sync.routes';
+import { checkTenantStatus } from '../core/middleware/checkTenantStatus';
 import seedRoutes from './seed.routes';
 import productTypeRoutes from './productType.routes';
 import productRoutes from './product.routes';
@@ -24,6 +25,7 @@ router.get('/health', (_req, res) => {
 router.use('/auth', authRoutes);
 router.use('/sync', syncRoutes);
 router.use('/seed', seedRoutes);
+router.use(checkTenantStatus);
 router.use('/product-types', productTypeRoutes);
 router.use('/products', productRoutes);
 router.use('/classes', classRoutes);
