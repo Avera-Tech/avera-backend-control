@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import TenantConfig from '../../master/models/TenantConfig.model';
 
-export async function checkTenantStatus(req: Request, res: Response, next: NextFunction) {
+export async function checkTenantStatus(_req: Request, res: Response, next: NextFunction) {
   try {
     const config = await TenantConfig.findOne();
 
@@ -26,7 +26,7 @@ export async function checkTenantStatus(req: Request, res: Response, next: NextF
       });
     }
 
-    next();
+    return next();
   } catch {
     return res.status(500).json({
       success: false,
