@@ -1,45 +1,54 @@
-import { Model, DataTypes, Optional } from 'sequelize';
+import { DataTypes, Model, Optional } from 'sequelize';
 import masterDB from '../../config/database.master';
 
-interface TenantConfigAttributes {
-  id: number;
-  clientId: string;
-  planName: string;
-  isActive: boolean;
-  planExpiresAt: Date;
-  trialEndsAt?: Date | null;
-  suspendedAt?: Date | null;
-  dbHost: string;
-  dbPort: number;
-  dbUser: string;
-  dbPass: string;
-  dbName: string;
-  createdAt?: Date;
-  updatedAt?: Date;
+export type TenantStatus = 'pending' | 'active' | 'pending_provision' | 'suspended' | 'cancelled';
+
+interface TenantAttributes {
+  id:              number;
+  cnpj:            string;
+  company_name:    string;
+  slug:            string;
+  segment:         string;
+  city:            string;
+  phone:           string | null;
+  courts_count:    string;
+  plan:            string;
+  status:          TenantStatus;
+  trial_starts_at: Date | null;
+  trial_ends_at:   Date | null;
+  db_name:         string | null;
+  db_password:     string | null;
+  control_api_url: string | null;
+  createdAt?:      Date;
+  updatedAt?:      Date;
 }
 
-interface TenantConfigCreationAttributes
-  extends Optional<TenantConfigAttributes, 'id' | 'trialEndsAt' | 'suspendedAt'> {}
+type TenantCreationAttributes = Optional<
+  TenantAttributes,
+  'id' | 'status' | 'phone' | 'trial_starts_at' | 'trial_ends_at' | 'db_name' | 'db_password' | 'control_api_url'
+>;
 
 class TenantConfig
-  extends Model<TenantConfigAttributes, TenantConfigCreationAttributes>
-  implements TenantConfigAttributes
+  extends Model<TenantAttributes, TenantCreationAttributes>
+  implements TenantAttributes
 {
-  public id!: number;
-  public clientId!: string;
-  public planName!: string;
-  public isActive!: boolean;
-  public planExpiresAt!: Date;
-  public trialEndsAt!: Date | null;
-  public suspendedAt!: Date | null;
-  public dbHost!: string;
-  public dbPort!: number;
-  public dbUser!: string;
-  public dbPass!: string;
-  public dbName!: string;
-
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  declare id:              number;
+  declare cnpj:            string;
+  declare company_name:    string;
+  declare slug:            string;
+  declare segment:         string;
+  declare city:            string;
+  declare phone:           string | null;
+  declare courts_count:    string;
+  declare plan:            string;
+  declare status:          TenantStatus;
+  declare trial_starts_at: Date | null;
+  declare trial_ends_at:   Date | null;
+  declare db_name:         string | null;
+  declare db_password:     string | null;
+  declare control_api_url: string | null;
+  declare readonly createdAt: Date;
+  declare readonly updatedAt: Date;
 }
 
 TenantConfig.init(
@@ -49,60 +58,76 @@ TenantConfig.init(
       autoIncrement: true,
       primaryKey: true,
     },
-    clientId: {
+    cnpj: {
+      type: DataTypes.STRING(14),
+      allowNull: false,
+      unique: true,
+    },
+    company_name: {
+      type: DataTypes.STRING(150),
+      allowNull: false,
+    },
+    slug: {
       type: DataTypes.STRING(100),
       allowNull: false,
       unique: true,
     },
-    planName: {
-      type: DataTypes.STRING(50),
+    segment: {
+      type: DataTypes.STRING(60),
       allowNull: false,
     },
-    isActive: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
-    },
-    planExpiresAt: {
-      type: DataTypes.DATE,
+    city: {
+      type: DataTypes.STRING(120),
       allowNull: false,
     },
-    trialEndsAt: {
+    phone: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+      defaultValue: null,
+    },
+    courts_count: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+    },
+    plan: {
+      type: DataTypes.STRING(100),
+      allowNull: false,
+      defaultValue: 'starter',
+    },
+    status: {
+      type: DataTypes.ENUM('pending', 'active', 'pending_provision', 'suspended', 'cancelled'),
+      allowNull: false,
+      defaultValue: 'pending',
+    },
+    trial_starts_at: {
       type: DataTypes.DATE,
       allowNull: true,
+      defaultValue: null,
     },
-    suspendedAt: {
+    trial_ends_at: {
       type: DataTypes.DATE,
       allowNull: true,
+      defaultValue: null,
     },
-    dbHost: {
+    db_name: {
+      type: DataTypes.STRING(60),
+      allowNull: true,
+      defaultValue: null,
+    },
+    db_password: {
       type: DataTypes.STRING(255),
-      allowNull: false,
+      allowNull: true,
+      defaultValue: null,
     },
-    dbPort: {
-      type: DataTypes.INTEGER.UNSIGNED,
-      allowNull: false,
-      defaultValue: 3306,
-    },
-    dbUser: {
-      type: DataTypes.STRING(100),
-      allowNull: false,
-    },
-    dbPass: {
-      type: DataTypes.STRING(512),
-      allowNull: false,
-      comment: 'AES-256-GCM encrypted — format: iv:authTag:ciphertext (hex)',
-    },
-    dbName: {
-      type: DataTypes.STRING(100),
-      allowNull: false,
+    control_api_url: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {
     sequelize: masterDB,
-    tableName: 'tenant_config',
-    timestamps: true,
-    underscored: false,
+    tableName: 'tenants',
   }
 );
 

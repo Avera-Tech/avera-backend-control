@@ -2,6 +2,8 @@ import { Sequelize } from 'sequelize';
 import { decrypt } from '../utils/crypto';
 import { createTenantModels, TenantDb } from './tenantModels';
 
+export type { TenantDb } from './tenantModels';
+
 const pool = new Map<string, TenantDb>();
 
 interface TenantConnConfig {

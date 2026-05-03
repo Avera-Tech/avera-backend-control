@@ -163,6 +163,26 @@ SELECT 4, id FROM permissions WHERE slug IN (
 
 USE master_db;
 
+-- Tabela: tenant_config
+CREATE TABLE IF NOT EXISTS tenant_config (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    clientId VARCHAR(100) NOT NULL UNIQUE,
+    planName VARCHAR(50) NOT NULL,
+    isActive BOOLEAN NOT NULL DEFAULT FALSE,
+    planExpiresAt DATETIME NOT NULL,
+    trialEndsAt DATETIME NULL,
+    suspendedAt DATETIME NULL,
+    dbHost VARCHAR(255) NOT NULL,
+    dbPort INT UNSIGNED NOT NULL DEFAULT 3306,
+    dbUser VARCHAR(100) NOT NULL,
+    dbPass VARCHAR(512) NOT NULL COMMENT 'AES-256-GCM encrypted — format: iv:authTag:ciphertext (hex)',
+    dbName VARCHAR(100) NOT NULL,
+    createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_clientId (clientId),
+    INDEX idx_isActive (isActive)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Tabela: app_configs
 CREATE TABLE IF NOT EXISTS app_configs (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

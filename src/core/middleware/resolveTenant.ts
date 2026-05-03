@@ -10,34 +10,39 @@ export async function resolveTenant(req: Request, res: Response, next: NextFunct
       return res.status(400).json({ success: false, error: 'Header X-Client-Id obrigatório' });
     }
 
-    const config = await TenantConfig.findOne({ where: { clientId } });
+    const tenant = await TenantConfig.findOne({ where: { slug: clientId } });
 
-    if (!config) {
+    if (!tenant) {
       console.warn(`[resolveTenant] Tenant não encontrado: ${clientId}`);
       return res.status(404).json({ success: false, error: 'Tenant não encontrado' });
     }
 
-    if (!config.isActive) {
-      return res.status(402).json({ success: false, error: 'Plano inativo' });
+    if (tenant.status !== 'active') {
+      return res.status(402).json({ success: false, error: 'Plano inativo ou suspenso' });
     }
 
-    if (config.planExpiresAt < new Date()) {
-      return res.status(402).json({ success: false, error: 'Plano expirado' });
+    if (!tenant.db_name || !tenant.db_password) {
+      return res.status(503).json({ success: false, error: 'Banco do tenant não provisionado' });
     }
 
-    console.log(`[resolveTenant] clientId=${clientId} → dbHost=${config.dbHost} dbName=${config.dbName}`);
+    if (tenant.trial_ends_at && tenant.trial_ends_at < new Date()) {
+      return res.status(402).json({ success: false, error: 'Trial expirado' });
+    }
+
+    console.log(`[resolveTenant] slug=${clientId} → db=${tenant.db_name}`);
 
     req.tenantDb = getTenantDb({
-      clientId: config.clientId,
-      dbHost: config.dbHost,
-      dbPort: config.dbPort,
-      dbUser: config.dbUser,
-      dbPass: config.dbPass,
-      dbName: config.dbName,
+      clientId:  tenant.slug,
+      dbHost:    process.env.DB_MASTER_HOST!,
+      dbPort:    Number(process.env.DB_TENANT_PORT) || 3306,
+      dbUser:    tenant.db_name,
+      dbPass:    tenant.db_password,
+      dbName:    tenant.db_name,
     });
 
     return next();
-  } catch {
+  } catch (err) {
+    console.error('[resolveTenant] Erro:', err);
     return res.status(500).json({ success: false, error: 'Erro ao resolver tenant' });
   }
 }
