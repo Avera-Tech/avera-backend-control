@@ -55,6 +55,8 @@ jobs:
               echo 'EMAIL_FROM_NAME=Avera'
               echo 'FRONTEND_RESET_URL=https://admin.averafit.app/reset-password?token='
               echo 'SYNC_SECRET_KEY=${{ secrets.SYNC_SECRET_KEY }}'
+              echo 'DB_ENCRYPTION_KEY=${{ secrets.DB_ENCRYPTION_KEY }}'
+              echo 'PAGARME_SECRET_KEY=${{ secrets.PAGARME_SECRET_KEY }}'
             } > .env
             npm install
             npm run build
