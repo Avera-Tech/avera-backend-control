@@ -19,9 +19,12 @@ router.get('/tenant/:clientId', async (req: Request, res: Response) => {
       return res.status(404).json({ found: false });
     }
 
-    const theme = await Theme.findOne({
-      where: { active: true, isDefault: true },
-    });
+    let theme = null;
+    try {
+      theme = await Theme.findOne({ where: { active: true, isDefault: true } });
+    } catch {
+      // tabela themes ainda não existe — usa defaults
+    }
 
     return res.status(200).json({
       found:           true,
