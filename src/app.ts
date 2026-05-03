@@ -3,7 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
-import path from 'path';
+import path from 'node:path';
 import routes from './routes';
 
 dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
@@ -58,7 +58,7 @@ app.use('/api', routes);
 app.get('/', (_req: Request, res: Response) => {
   res.json({
     success: true,
-    version: '1.0.1',
+    version: '1.0.2',
   });
 });
 
