@@ -128,6 +128,8 @@ router.post('/:clientId', async (req: Request, res: Response) => {
       dbName:   tenant.db_name,
     });
 
+    await tenantDb.sequelize.sync({ force: false });
+
     const { Role, Permission, RolePermission } = tenantDb;
 
     await seedRoles(Role);
