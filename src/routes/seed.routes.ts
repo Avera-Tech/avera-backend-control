@@ -134,7 +134,8 @@ router.post('/', async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       error: 'Erro ao executar seed',
-      message: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      message: error.message,
+      hint: error?.parent?.sqlMessage ?? undefined,
     });
   }
 });

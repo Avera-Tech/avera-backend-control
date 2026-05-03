@@ -13,6 +13,7 @@ export async function resolveTenant(req: Request, res: Response, next: NextFunct
     const config = await TenantConfig.findOne({ where: { clientId } });
 
     if (!config) {
+      console.warn(`[resolveTenant] Tenant não encontrado: ${clientId}`);
       return res.status(404).json({ success: false, error: 'Tenant não encontrado' });
     }
 
@@ -23,6 +24,8 @@ export async function resolveTenant(req: Request, res: Response, next: NextFunct
     if (config.planExpiresAt < new Date()) {
       return res.status(402).json({ success: false, error: 'Plano expirado' });
     }
+
+    console.log(`[resolveTenant] clientId=${clientId} → dbHost=${config.dbHost} dbName=${config.dbName}`);
 
     req.tenantDb = getTenantDb({
       clientId: config.clientId,

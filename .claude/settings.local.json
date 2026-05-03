@@ -1,7 +1,18 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
+      "Bash(xargs grep *)",
+      "Bash(git -C \"e:/Workspace/Avera/avera-master-backend\" status)",
+      "Bash(git -C \"e:/Workspace/Avera/Avera Control/dashboard-style-guide\" status)",
+      "Bash(git -C \"e:/Workspace/Avera/Avera Control/backend-node\" add src/routes/index.ts src/routes/sync.routes.ts src/core/middleware/checkTenantStatus.ts src/master/models/TenantConfig.model.ts)",
+      "Bash(git -C 'e:/Workspace/Avera/Avera Control/backend-node' commit -m ' *)",
+      "Bash(git -C \"e:/Workspace/Avera/Avera Control/dashboard-style-guide\" add src/App.tsx src/components/PrivateRoute.tsx src/modules/core/pages/Login.tsx src/utils/conectAPI.ts src/contexts/)",
+      "Bash(git -C 'e:/Workspace/Avera/Avera Control/dashboard-style-guide' commit -m ' *)",
+      "Bash(python3 -c \"import sys,json; lines=sys.stdin.read\\(\\).strip\\(\\).split\\('\\\\n'\\); [print\\(json.loads\\(l\\).get\\('message',{}\\).get\\('content',''\\)[:500] if isinstance\\(json.loads\\(l\\).get\\('message',{}\\).get\\('content',''\\), str\\) else ''\\) for l in lines[-20:] if l]\")",
+      "Bash(python3)",
+      "Bash(grep -rn \"^import { DataTypes,\" src/ --include=\"*.ts\" -l)"
     ]
   }
 }
