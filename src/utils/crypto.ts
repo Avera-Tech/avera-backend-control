@@ -1,10 +1,10 @@
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
 
 function getKey(): Buffer {
-  const raw = process.env.DB_ENCRYPTION_KEY ?? '';
+  const raw = process.env.DB_PASSWORD_SECRET ?? '';
   if (raw.length !== 64) {
     throw new Error('DB_ENCRYPTION_KEY must be a 64-char hex string (32 bytes)');
   }
