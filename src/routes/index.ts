@@ -3,6 +3,7 @@ import authRoutes from './auth.routes';
 import syncRoutes from './sync.routes';
 import masterSyncRoutes from './masterSync.routes';
 import publicRoutes from './public.routes';
+import seedInitRoutes from './seedInit.routes';
 import { resolveTenant } from '../core/middleware/resolveTenant';
 import seedRoutes from './seed.routes';
 import productTypeRoutes from './productType.routes';
@@ -31,6 +32,9 @@ router.use('/sync/tenant-config', masterSyncRoutes);
 
 // Public — frontend busca nome/tema do tenant antes do login (no X-Client-Id needed)
 router.use('/public', publicRoutes);
+
+// Public — seed inicial de um tenant específico (sem X-Client-Id, resolve internamente)
+router.use('/seed/init', seedInitRoutes);
 
 // Public webhooks — external callbacks with no X-Client-Id header
 // Tenant is resolved from URL param (Wellhub) or order metadata (Pagar.me PIX)

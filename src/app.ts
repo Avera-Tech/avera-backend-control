@@ -10,6 +10,8 @@ dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
 const app: Application = express();
 
+app.set('trust proxy', 1);
+
 /**
  * Configurações de Segurança
  */

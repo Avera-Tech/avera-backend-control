@@ -1,22 +1,36 @@
 import { Router, Request, Response } from 'express';
-import bcrypt from 'bcryptjs';
+import TenantConfig from '../master/models/TenantConfig.model';
+import { getTenantDb } from '../config/tenantConnectionManager';
 
 const router = Router();
 
-// TODO: adicionar autenticação nos endpoints de seed antes de ir para produção
-function guardSeedKey(_req: Request, _res: Response): boolean {
-  return true;
-}
+// POST /api/seed/init/:clientId
+// Popula o banco do tenant com dados iniciais (roles, permissions, role_permissions).
+// Não requer X-Client-Id — resolve o tenant internamente pelo clientId da URL.
+// TODO: adicionar autenticação antes de ir para produção
+router.post('/:clientId', async (req: Request, res: Response) => {
+  const { clientId } = req.params;
 
-router.post('/', async (req: Request, res: Response) => {
-  if (!guardSeedKey(req, res)) return;
+  const config = await TenantConfig.findOne({ where: { clientId, isActive: true } });
+  if (!config) {
+    return res.status(404).json({ success: false, error: `Tenant '${clientId}' não encontrado ou inativo` });
+  }
 
-  const { Role, Permission, RolePermission } = req.tenantDb;
+  const tenantDb = getTenantDb({
+    clientId: config.clientId,
+    dbHost:   config.dbHost,
+    dbPort:   config.dbPort,
+    dbUser:   config.dbUser,
+    dbPass:   config.dbPass,
+    dbName:   config.dbName,
+  });
+
+  const { Role, Permission, RolePermission } = tenantDb;
   const results: Record<string, string> = {};
 
   try {
     const rolesData = [
-      { name: 'Administrador', slug: 'admin',    description: 'Acesso total ao sistema da Avera CT', active: true },
+      { name: 'Administrador', slug: 'admin',    description: 'Acesso total ao sistema', active: true },
       { name: 'Empregado',     slug: 'employee', description: 'Acesso administrativo: clientes, turmas, financeiro', active: true },
       { name: 'Professor',     slug: 'teacher',  description: 'Acesso às aulas e fichas dos clientes', active: true },
     ];
@@ -65,7 +79,7 @@ router.post('/', async (req: Request, res: Response) => {
     const employeeRole = await Role.findOne({ where: { slug: 'employee' } });
     const teacherRole  = await Role.findOne({ where: { slug: 'teacher' } });
     const allPerms     = await Permission.findAll();
-    const permMap      = Object.fromEntries(allPerms.map((p: any) => [p.slug, p.id]));
+    const permMap      = Object.fromEntries(allPerms.map((p) => [p.slug, p.id]));
 
     if (adminRole) {
       for (const perm of allPerms) {
@@ -77,13 +91,13 @@ router.post('/', async (req: Request, res: Response) => {
       results['role_permissions:admin'] = '✅ todas as permissões atribuídas ao admin';
     }
 
+    const employeeSlugs = [
+      'users:list', 'users:read', 'users:create', 'users:update', 'users:delete',
+      'staff:list', 'staff:read', 'staff:create', 'staff:update', 'staff:delete',
+      'classes:list', 'classes:read', 'classes:create', 'classes:update', 'classes:delete',
+      'financial:read', 'financial:manage', 'reports:read', 'reports:export', 'dashboard:read',
+    ];
     if (employeeRole) {
-      const employeeSlugs = [
-        'users:list', 'users:read', 'users:create', 'users:update', 'users:delete',
-        'staff:list', 'staff:read', 'staff:create', 'staff:update', 'staff:delete',
-        'classes:list', 'classes:read', 'classes:create', 'classes:update', 'classes:delete',
-        'financial:read', 'financial:manage', 'reports:read', 'reports:export', 'dashboard:read',
-      ];
       for (const slug of employeeSlugs) {
         if (permMap[slug]) {
           await RolePermission.findOrCreate({
@@ -95,11 +109,11 @@ router.post('/', async (req: Request, res: Response) => {
       results['role_permissions:employee'] = '✅ permissões atribuídas ao employee';
     }
 
+    const teacherSlugs = [
+      'staff:list', 'staff:read', 'users:list', 'users:read',
+      'classes:list', 'classes:read', 'classes:create', 'classes:update', 'dashboard:read',
+    ];
     if (teacherRole) {
-      const teacherSlugs = [
-        'staff:list', 'staff:read', 'users:list', 'users:read',
-        'classes:list', 'classes:read', 'classes:create', 'classes:update', 'dashboard:read',
-      ];
       for (const slug of teacherSlugs) {
         if (permMap[slug]) {
           await RolePermission.findOrCreate({
@@ -111,93 +125,15 @@ router.post('/', async (req: Request, res: Response) => {
       results['role_permissions:teacher'] = '✅ permissões atribuídas ao teacher';
     }
 
-    return res.status(201).json({ success: true, message: 'Seed concluído com sucesso', results });
+    return res.status(201).json({ success: true, clientId, message: 'Seed concluído com sucesso', results });
 
   } catch (error: any) {
-    console.error('Erro no seed:', error);
+    console.error(`[seed/init] Erro para ${clientId}:`, error);
     return res.status(500).json({
       success: false,
       error: 'Erro ao executar seed',
       message: error.message,
       hint: error?.parent?.sqlMessage ?? undefined,
-    });
-  }
-});
-
-router.post('/admin', async (req: Request, res: Response) => {
-  if (!guardSeedKey(req, res)) return;
-
-  try {
-    const { Staff, Role, UserRole } = req.tenantDb;
-    const adminEmail    = process.env.ADMIN_EMAIL    || 'admin@averact.com';
-    const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@2025';
-    const adminName     = process.env.ADMIN_NAME     || 'Administrador Avera';
-
-    const existingStaff = await Staff.findOne({ where: { email: adminEmail } });
-    if (existingStaff) {
-      return res.status(200).json({ success: true, message: `Admin '${adminEmail}' já existe` });
-    }
-
-    const adminRole = await Role.findOne({ where: { slug: 'admin' } });
-    if (!adminRole) {
-      return res.status(400).json({
-        success: false,
-        error: 'Role admin não encontrada. Execute POST /api/seed primeiro.',
-      });
-    }
-
-    const hashed = await bcrypt.hash(adminPassword, 12);
-    const staff = await Staff.create({
-      name: adminName,
-      email: adminEmail,
-      password: hashed,
-      active: true,
-      emailVerified: true,
-    });
-
-    await UserRole.create({ staffId: staff.id, roleId: adminRole.id });
-
-    return res.status(201).json({
-      success: true,
-      message: 'Admin criado com sucesso',
-      staff: { id: staff.id, name: staff.name, email: staff.email },
-      note: '⚠️ Altere a senha após o primeiro acesso',
-    });
-
-  } catch (error: any) {
-    console.error('Erro ao criar admin:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Erro ao criar admin',
-      message: process.env.NODE_ENV === 'development' ? error.message : undefined,
-    });
-  }
-});
-
-router.post('/levels', async (req: Request, res: Response) => {
-  if (!guardSeedKey(req, res)) return;
-
-  const { UserLevel } = req.tenantDb;
-  const levelsData = [
-    { name: 'Iniciante',     color: '#4ADE80', active: true },
-    { name: 'Intermediário', color: '#FACC15', active: true },
-    { name: 'Avançado',      color: '#F97316', active: true },
-    { name: 'Competitivo',   color: '#EF4444', active: true },
-  ];
-
-  try {
-    const results: string[] = [];
-    for (const level of levelsData) {
-      const [, created] = await UserLevel.findOrCreate({ where: { name: level.name }, defaults: level });
-      results.push(`${created ? '✅ criado' : '⏭️  já existe'}: ${level.name}`);
-    }
-    return res.status(201).json({ success: true, results });
-  } catch (error: any) {
-    console.error('Erro no seed de níveis:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Erro ao inserir níveis',
-      message: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
 });
