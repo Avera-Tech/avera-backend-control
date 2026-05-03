@@ -57,6 +57,7 @@ jobs:
               echo 'SYNC_SECRET_KEY=${{ secrets.SYNC_SECRET_KEY }}'
               echo 'DB_PASSWORD_SECRET=${{ secrets.DB_PASSWORD_SECRET }}'
               echo 'PAGARME_SECRET_KEY=${{ secrets.PAGARME_SECRET_KEY }}'
+              echo 'MASTER_ACCESS_SECRET=${{ secrets.MASTER_ACCESS_SECRET }}'
             } > .env
             npm install
             npm run build

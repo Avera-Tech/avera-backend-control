@@ -7,14 +7,16 @@ export const checkPermissions = (
 ) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
     try {
-      if (!req.user?.staffId) {
+      if (!req.user?.staffId && !req.user?.isMaster) {
         return res.status(401).json({
           success: false,
           error: 'Usuário não autenticado',
         });
       }
 
-      const { staffId } = req.user;
+      if (req.user?.isMaster) return next();
+
+      const { staffId } = req.user!;
       const { UserRole, Role, RolePermission, Permission } = req.tenantDb;
 
       const staffRoles = await UserRole.findAll({
@@ -91,14 +93,16 @@ export const checkRoles = (
 ) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
     try {
-      if (!req.user?.staffId) {
+      if (!req.user?.staffId && !req.user?.isMaster) {
         return res.status(401).json({
           success: false,
           error: 'Usuário não autenticado',
         });
       }
 
-      const { staffId } = req.user;
+      if (req.user?.isMaster) return next();
+
+      const { staffId } = req.user!;
       const { UserRole, Role } = req.tenantDb;
 
       const staffRoles = await UserRole.findAll({

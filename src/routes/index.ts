@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { MasterAccessController } from '../core/auth/controllers/MasterAccessController';
 import authRoutes from './auth.routes';
 import syncRoutes from './sync.routes';
 import masterSyncRoutes from './masterSync.routes';
@@ -35,6 +36,9 @@ router.use('/public', publicRoutes);
 
 // Public — seed inicial de um tenant específico (sem X-Client-Id, resolve internamente)
 router.use('/seed/init', seedInitRoutes);
+
+// Public — troca de master token por JWT do tenant
+router.post('/auth/master-access', MasterAccessController.exchange);
 
 // Public webhooks — external callbacks with no X-Client-Id header
 // Tenant is resolved from URL param (Wellhub) or order metadata (Pagar.me PIX)

@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 export interface TokenPayload {
   staffId: number;
   email: string;
+  isMaster?: boolean;
   iat?: number;
   exp?: number;
 }

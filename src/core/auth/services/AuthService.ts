@@ -5,6 +5,7 @@ import { TenantDb } from '../../../config/tenantModels';
 export interface JWTPayload {
   staffId: number;
   email: string;
+  isMaster?: boolean;
 }
 
 export interface LoginResponse {
