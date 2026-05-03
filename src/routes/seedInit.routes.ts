@@ -11,24 +11,23 @@ const router = Router();
 router.post('/:clientId', async (req: Request, res: Response) => {
   const { clientId } = req.params;
 
-  const config = await TenantConfig.findOne({ where: { clientId, isActive: true } });
-  if (!config) {
-    return res.status(404).json({ success: false, error: `Tenant '${clientId}' não encontrado ou inativo` });
-  }
-
-  const tenantDb = getTenantDb({
-    clientId: config.clientId,
-    dbHost:   config.dbHost,
-    dbPort:   config.dbPort,
-    dbUser:   config.dbUser,
-    dbPass:   config.dbPass,
-    dbName:   config.dbName,
-  });
-
-  const { Role, Permission, RolePermission } = tenantDb;
-  const results: Record<string, string> = {};
-
   try {
+    const config = await TenantConfig.findOne({ where: { clientId, isActive: true } });
+    if (!config) {
+      return res.status(404).json({ success: false, error: `Tenant '${clientId}' não encontrado ou inativo` });
+    }
+
+    const tenantDb = getTenantDb({
+      clientId: config.clientId,
+      dbHost:   config.dbHost,
+      dbPort:   config.dbPort,
+      dbUser:   config.dbUser,
+      dbPass:   config.dbPass,
+      dbName:   config.dbName,
+    });
+
+    const { Role, Permission, RolePermission } = tenantDb;
+    const results: Record<string, string> = {};
     const rolesData = [
       { name: 'Administrador', slug: 'admin',    description: 'Acesso total ao sistema', active: true },
       { name: 'Empregado',     slug: 'employee', description: 'Acesso administrativo: clientes, turmas, financeiro', active: true },
