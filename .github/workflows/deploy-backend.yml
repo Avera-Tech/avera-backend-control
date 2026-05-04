@@ -62,5 +62,7 @@ jobs:
             } > .env
             npm install
             npm run build
+            mkdir -p /www/wwwroot/backend-control/uploads/themes
+            chown -R www:www /www/wwwroot/backend-control/uploads
             su -s /bin/bash www -c "cd /www/wwwroot/backend-control && pm2 startOrReload ecosystem.config.js --env production && pm2 save"
           EOF
