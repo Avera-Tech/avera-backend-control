@@ -49,7 +49,12 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 /**
  * Arquivos estáticos — uploads de logo/favicon por tenant
+ * CORP precisa ser cross-origin para permitir carregamento de outros domínios
  */
+app.use('/uploads', (_req, res, next) => {
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+});
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 /**
