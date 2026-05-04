@@ -21,7 +21,7 @@ router.get('/tenant/:clientId', async (req: Request, res: Response) => {
 
     let theme = null;
     try {
-      theme = await Theme.findOne({ where: { active: true, isDefault: true } });
+      theme = await Theme.findOne({ where: { slug: clientId } });
     } catch {
       // tabela themes ainda não existe — usa defaults
     }

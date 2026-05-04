@@ -3,6 +3,7 @@ import masterDB from '../../config/database.master';
 
 interface ThemeAttributes {
   id: number;
+  slug: string;
   name: string;
   primaryColor: string;
   secondaryColor: string;
@@ -22,6 +23,7 @@ interface ThemeCreationAttributes extends Optional<ThemeAttributes, 'id' | 'logo
 
 class Theme extends Model<ThemeAttributes, ThemeCreationAttributes> implements ThemeAttributes {
   public id!: number;
+  public slug!: string;
   public name!: string;
   public primaryColor!: string;
   public secondaryColor!: string;
@@ -44,6 +46,12 @@ Theme.init(
       type: DataTypes.INTEGER.UNSIGNED,
       autoIncrement: true,
       primaryKey: true,
+    },
+    slug: {
+      type: DataTypes.STRING(100),
+      allowNull: false,
+      unique: true,
+      comment: 'Vincula o tema ao tenant (tenants.slug)',
     },
     name: {
       type: DataTypes.STRING(100),
@@ -123,10 +131,8 @@ Theme.init(
     timestamps: true,
     underscored: false,
     indexes: [
-      {
-        unique: true,
-        fields: ['name'],
-      },
+      { unique: true, fields: ['slug'] },
+      { unique: true, fields: ['name'] },
     ],
   }
 );
