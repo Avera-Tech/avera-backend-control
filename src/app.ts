@@ -48,6 +48,11 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 /**
+ * Arquivos estáticos — uploads de logo/favicon por tenant
+ */
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+
+/**
  * Rotas
  */
 app.use('/api', routes);

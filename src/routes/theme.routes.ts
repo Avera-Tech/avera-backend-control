@@ -1,9 +1,42 @@
 import { Router, Request, Response } from 'express';
+import multer from 'multer';
+import path from 'node:path';
+import fs from 'node:fs';
 import { authenticateToken } from '../core/middleware/authenticateToken';
 import Theme from '../master/models/Theme.model';
 import Joi from 'joi';
 
 const router = Router();
+
+// ── Multer ──────────────────────────────────────────────────────────────────
+
+const UPLOADS_ROOT = path.join(__dirname, '..', '..', 'uploads', 'themes');
+
+const storage = multer.diskStorage({
+  destination: (req, _file, cb) => {
+    const slug = (req.headers['x-client-id'] as string) || 'default';
+    const dir  = path.join(UPLOADS_ROOT, slug);
+    fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase() || '.png';
+    // fieldname será 'logo' ou 'favicon' — sobrescreve o arquivo anterior
+    cb(null, `${file.fieldname}${ext}`);
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB
+  fileFilter: (_req, file, cb) => {
+    const allowed = /^image\/(png|jpeg|jpg|gif|svg\+xml|x-icon|vnd.microsoft.icon|webp)$/;
+    if (allowed.test(file.mimetype)) return cb(null, true);
+    cb(new Error('Somente imagens são permitidas'));
+  },
+});
+
+// ── Validação ───────────────────────────────────────────────────────────────
 
 const colorHex = Joi.string().pattern(/^#[0-9A-Fa-f]{6}$/).optional();
 
@@ -14,28 +47,25 @@ const themeSchema = Joi.object({
   accentColor:     colorHex,
   backgroundColor: colorHex,
   textColor:       colorHex,
-  logo:            Joi.string().uri().allow('', null).optional(),
-  favicon:         Joi.string().uri().allow('', null).optional(),
+  logo:            Joi.string().allow('', null).optional(),
+  favicon:         Joi.string().allow('', null).optional(),
 });
 
-/** GET /api/theme — retorna o tema atual do tenant */
+// ── Routes ──────────────────────────────────────────────────────────────────
+
+/** GET /api/theme */
 router.get('/', authenticateToken, async (req: Request, res: Response) => {
   try {
-    const slug = req.headers['x-client-id'] as string;
+    const slug  = req.headers['x-client-id'] as string;
     const theme = await Theme.findOne({ where: { slug } });
-
-    return res.json({
-      success: true,
-      configured: theme !== null,
-      theme: theme ?? null,
-    });
+    return res.json({ success: true, configured: theme !== null, theme: theme ?? null });
   } catch (err: any) {
     console.error('[theme] GET error:', err);
     return res.status(500).json({ success: false, error: 'Erro ao buscar tema' });
   }
 });
 
-/** PUT /api/theme — cria ou atualiza o tema do tenant */
+/** PUT /api/theme — upsert de cores e URLs */
 router.put('/', authenticateToken, async (req: Request, res: Response) => {
   try {
     const slug = req.headers['x-client-id'] as string;
@@ -72,5 +102,52 @@ router.put('/', authenticateToken, async (req: Request, res: Response) => {
     return res.status(500).json({ success: false, error: 'Erro ao salvar tema' });
   }
 });
+
+/** POST /api/theme/upload/:field — upload de logo ou favicon */
+router.post(
+  '/upload/:field',
+  authenticateToken,
+  (req: Request, res: Response, next) => {
+    const field = req.params.field;
+    if (field !== 'logo' && field !== 'favicon') {
+      return res.status(400).json({ success: false, error: 'Campo inválido. Use logo ou favicon.' });
+    }
+    upload.single(field)(req, res, next);
+  },
+  async (req: Request, res: Response) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ success: false, error: 'Nenhum arquivo enviado' });
+      }
+
+      const slug     = req.headers['x-client-id'] as string;
+      const backendUrl = process.env.BACKEND_URL ?? `http://localhost:${process.env.PORT ?? 3000}`;
+      const fileUrl  = `${backendUrl}/uploads/themes/${slug}/${req.file.filename}`;
+
+      // Atualiza a coluna logo ou favicon no tema do tenant (upsert)
+      const [theme] = await Theme.findOrCreate({
+        where:    { slug },
+        defaults: {
+          slug,
+          name:            slug,
+          primaryColor:    '#3B82F6',
+          secondaryColor:  '#6c757d',
+          accentColor:     '#F59E0B',
+          backgroundColor: '#ffffff',
+          textColor:       '#212529',
+          active:          true,
+          isDefault:       false,
+        },
+      });
+
+      await theme.update({ [req.params.field]: fileUrl });
+
+      return res.json({ success: true, url: fileUrl });
+    } catch (err: any) {
+      console.error('[theme] upload error:', err);
+      return res.status(500).json({ success: false, error: 'Erro ao fazer upload' });
+    }
+  }
+);
 
 export default router;
