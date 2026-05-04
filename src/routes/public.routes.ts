@@ -28,6 +28,7 @@ router.get('/tenant/:clientId', async (req: Request, res: Response) => {
 
     return res.status(200).json({
       found:           true,
+      themeConfigured: theme !== null,
       name:            tenant.company_name,
       primaryColor:    theme?.primaryColor    ?? '#3B82F6',
       secondaryColor:  theme?.secondaryColor  ?? '#6c757d',
