@@ -8,10 +8,9 @@ const initializeDatabases = async (): Promise<void> => {
     await masterDB.authenticate();
     console.log('✅ Conexão com banco MASTER estabelecida');
 
-    if (process.env.NODE_ENV === 'development') {
-      await masterDB.sync({ alter: false });
-      console.log('✅ Modelos do banco MASTER sincronizados');
-    }
+    // Cria tabelas master que ainda não existem (nunca altera nem destrói)
+    await masterDB.sync({ force: false, alter: false });
+    console.log('✅ Modelos do banco MASTER sincronizados');
   } catch (error) {
     console.error('❌ Erro ao conectar ao banco MASTER:', error);
     process.exit(1);

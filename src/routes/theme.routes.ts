@@ -41,7 +41,7 @@ const upload = multer({
 const colorHex = Joi.string().pattern(/^#[0-9A-Fa-f]{6}$/).optional();
 
 const themeSchema = Joi.object({
-  name:            Joi.string().max(100).optional(),
+  name:            Joi.string().max(100).allow('', null).optional(),
   primaryColor:    colorHex,
   secondaryColor:  colorHex,
   accentColor:     colorHex,
@@ -84,7 +84,7 @@ router.put('/', authenticateToken, async (req: Request, res: Response) => {
 
     const theme = await Theme.create({
       slug,
-      name:            value.name            ?? slug,
+      name:            value.name || slug,
       primaryColor:    value.primaryColor    ?? '#3B82F6',
       secondaryColor:  value.secondaryColor  ?? '#6c757d',
       accentColor:     value.accentColor     ?? '#F59E0B',
@@ -103,7 +103,7 @@ router.put('/', authenticateToken, async (req: Request, res: Response) => {
   }
 });
 
-/** POST /api/theme/upload/:field — upload de logo ou favicon */
+/** POST /api/theme/upload/:field — salva arquivo e retorna URL pública */
 router.post(
   '/upload/:field',
   authenticateToken,
@@ -112,41 +112,23 @@ router.post(
     if (field !== 'logo' && field !== 'favicon') {
       return res.status(400).json({ success: false, error: 'Campo inválido. Use logo ou favicon.' });
     }
-    upload.single(field)(req, res, next);
-  },
-  async (req: Request, res: Response) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ success: false, error: 'Nenhum arquivo enviado' });
+    upload.single(field)(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({ success: false, error: err.message ?? 'Erro no upload' });
       }
-
-      const slug     = req.headers['x-client-id'] as string;
-      const backendUrl = process.env.BACKEND_URL ?? `http://localhost:${process.env.PORT ?? 3000}`;
-      const fileUrl  = `${backendUrl}/uploads/themes/${slug}/${req.file.filename}`;
-
-      // Atualiza a coluna logo ou favicon no tema do tenant (upsert)
-      const [theme] = await Theme.findOrCreate({
-        where:    { slug },
-        defaults: {
-          slug,
-          name:            slug,
-          primaryColor:    '#3B82F6',
-          secondaryColor:  '#6c757d',
-          accentColor:     '#F59E0B',
-          backgroundColor: '#ffffff',
-          textColor:       '#212529',
-          active:          true,
-          isDefault:       false,
-        },
-      });
-
-      await theme.update({ [req.params.field]: fileUrl });
-
-      return res.json({ success: true, url: fileUrl });
-    } catch (err: any) {
-      console.error('[theme] upload error:', err);
-      return res.status(500).json({ success: false, error: 'Erro ao fazer upload' });
+      next();
+    });
+  },
+  (req: Request, res: Response) => {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'Nenhum arquivo enviado' });
     }
+
+    const slug       = req.headers['x-client-id'] as string;
+    const backendUrl = process.env.BACKEND_URL ?? `http://localhost:${process.env.PORT ?? 3000}`;
+    const fileUrl    = `${backendUrl}/uploads/themes/${slug}/${req.file.filename}`;
+
+    return res.json({ success: true, url: fileUrl });
   }
 );
 
