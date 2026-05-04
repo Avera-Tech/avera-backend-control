@@ -50,6 +50,13 @@ export class AuthService {
       staff.lastLogin = new Date();
       await staff.save();
 
+      const userRole = await db.UserRole.findOne({
+        where: { staffId: staff.id },
+        include: [{ model: db.Role, as: 'role', attributes: ['name'] }],
+        order: [['id', 'ASC']],
+      });
+      const roleName: string | null = (userRole as any)?.role?.name ?? null;
+
       const payload: JWTPayload = { staffId: staff.id, email: staff.email };
       const token = this.generateAuthToken(payload);
       const refreshToken = this.generateRefreshToken(payload);
@@ -57,7 +64,7 @@ export class AuthService {
       return {
         success: true, token, refreshToken,
         expiresIn: process.env.JWT_EXPIRES_IN || '24h',
-        staff: { id: staff.id, name: staff.name, email: staff.email },
+        staff: { id: staff.id, name: staff.name, email: staff.email, role: roleName },
       };
     } catch (error: any) {
       console.error('Erro no login:', error);
