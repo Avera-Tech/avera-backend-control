@@ -286,6 +286,32 @@ function initProductType(seq: Sequelize) {
   return ProductType;
 }
 
+// ─── Modality ─────────────────────────────────────────────────────────────────
+
+interface ModalityAttr {
+  id: number; name: string; color?: string; icon?: string;
+  active: boolean; createdAt?: Date; updatedAt?: Date;
+}
+interface ModalityCreate extends Optional<ModalityAttr, 'id' | 'color' | 'icon' | 'active'> {}
+
+function initModality(seq: Sequelize) {
+  class Modality extends Model<ModalityAttr, ModalityCreate> implements ModalityAttr {
+    public id!: number; public name!: string; public color!: string;
+    public icon!: string; public active!: boolean;
+    public readonly createdAt!: Date; public readonly updatedAt!: Date;
+  }
+  Modality.init({
+    id: { type: DataTypes.INTEGER.UNSIGNED, autoIncrement: true, primaryKey: true },
+    name: { type: DataTypes.STRING(100), allowNull: false, unique: true },
+    color: { type: DataTypes.STRING(20), allowNull: true },
+    icon: { type: DataTypes.STRING(100), allowNull: true },
+    active: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+  }, { sequelize: seq, tableName: 'modalities', timestamps: true, underscored: false,
+    indexes: [{ unique: true, fields: ['name'], name: 'uq_modalities_name' },
+      { fields: ['active'], name: 'idx_modalities_active' }] });
+  return Modality;
+}
+
 // ─── Product ──────────────────────────────────────────────────────────────────
 
 interface ProductAttr {
@@ -693,6 +719,7 @@ export function createTenantModels(sequelize: Sequelize) {
   const UserLevel         = initUserLevel(sequelize);
   const UserGuardian      = initUserGuardian(sequelize);
   const ProductType       = initProductType(sequelize);
+  const Modality          = initModality(sequelize);
   const Product           = initProduct(sequelize);
   const Place             = initPlace(sequelize);
   const ProductTypePlace  = initProductTypePlace(sequelize);
@@ -765,7 +792,7 @@ export function createTenantModels(sequelize: Sequelize) {
     Role, Permission, RolePermission, UserRole,
     Staff, OtpCode,
     ClientUser, UserLevel, UserGuardian,
-    ProductType, Product, Place, ProductTypePlace,
+    ProductType, Modality, Product, Place, ProductTypePlace,
     Class, ClassStudent, WaitingList,
     StudentCredit, CreditTransaction,
     Item, Transaction,
