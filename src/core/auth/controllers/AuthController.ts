@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { AuthService } from '../services/AuthService';
+import Theme from '../../../master/models/Theme.model';
 import Joi from 'joi';
 
 const loginSchema = Joi.object({
@@ -27,7 +28,10 @@ export class AuthController {
         return res.status(401).json(result);
       }
 
-      return res.status(200).json(result);
+      const slug  = req.headers['x-client-id'] as string;
+      const theme = await Theme.findOne({ where: { slug }, attributes: ['id'] });
+
+      return res.status(200).json({ ...result, onboardingCompleted: theme !== null });
     } catch (error: any) {
       console.error('Erro no login:', error);
       return res.status(500).json({
