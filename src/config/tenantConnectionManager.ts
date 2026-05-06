@@ -34,9 +34,16 @@ export function getTenantDb(config: TenantConnConfig): TenantDb {
 
   const db = createTenantModels(sequelize);
   // Cria tabelas novas e adiciona colunas faltantes (não destrói dados existentes)
-  sequelize.sync({ alter: true }).catch((err) =>
-    console.error(`[sync] Erro ao sincronizar tabelas para ${config.clientId}:`, err)
-  );
+  (async () => {
+    try {
+      await sequelize.query('SET FOREIGN_KEY_CHECKS=0');
+      await sequelize.sync({ alter: true });
+      await sequelize.query('SET FOREIGN_KEY_CHECKS=1');
+    } catch (err) {
+      console.error(`[sync] Erro ao sincronizar tabelas para ${config.clientId}:`, err);
+      sequelize.query('SET FOREIGN_KEY_CHECKS=1').catch(() => {});
+    }
+  })();
   pool.set(config.clientId, db);
   return db;
 }

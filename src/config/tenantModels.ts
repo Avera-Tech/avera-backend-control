@@ -413,7 +413,7 @@ function initClass(seq: Sequelize) {
     staff_id: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, references: { model: 'staff', key: 'id' } },
     modality_id: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true, defaultValue: null,
       references: { model: 'modalities', key: 'id' }, onDelete: 'SET NULL', onUpdate: 'CASCADE' },
-    product_type_id: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true, references: { model: 'product_types', key: 'id' } },
+    product_type_id: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true, defaultValue: null, references: { model: 'product_types', key: 'id' } },
     place_id: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true, references: { model: 'places', key: 'id' } },
     date: { type: DataTypes.DATEONLY, allowNull: false },
     time: { type: DataTypes.TIME, allowNull: false },
