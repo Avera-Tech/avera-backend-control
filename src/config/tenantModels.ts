@@ -316,17 +316,17 @@ function initProductType(seq: Sequelize) {
 // ─── Product ──────────────────────────────────────────────────────────────────
 
 interface ProductAttr {
-  id: number; productTypeId: number; name: string; description?: string;
+  id: number; productTypeId: number; modalityId?: number | null; name: string; description?: string;
   credits: number; value: number; validityDays: number; purchaseLimit?: number;
   recurring: boolean; recurringInterval?: RecurringInterval; active: boolean;
   createdAt?: Date; updatedAt?: Date;
 }
-interface ProductCreate extends Optional<ProductAttr, 'id' | 'description' | 'purchaseLimit' | 'recurring' | 'recurringInterval' | 'active'> {}
+interface ProductCreate extends Optional<ProductAttr, 'id' | 'modalityId' | 'description' | 'purchaseLimit' | 'recurring' | 'recurringInterval' | 'active'> {}
 
 function initProduct(seq: Sequelize) {
   class Product extends Model<ProductAttr, ProductCreate> implements ProductAttr {
-    public id!: number; public productTypeId!: number; public name!: string;
-    public description!: string; public credits!: number; public value!: number;
+    public id!: number; public productTypeId!: number; public modalityId!: number | null;
+    public name!: string; public description!: string; public credits!: number; public value!: number;
     public validityDays!: number; public purchaseLimit!: number; public recurring!: boolean;
     public recurringInterval!: RecurringInterval; public active!: boolean;
     public readonly createdAt!: Date; public readonly updatedAt!: Date;
@@ -335,6 +335,8 @@ function initProduct(seq: Sequelize) {
     id: { type: DataTypes.INTEGER.UNSIGNED, autoIncrement: true, primaryKey: true },
     productTypeId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false,
       references: { model: 'product_types', key: 'id' }, onDelete: 'RESTRICT', onUpdate: 'CASCADE' },
+    modalityId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true,
+      references: { model: 'modalities', key: 'id' }, onDelete: 'SET NULL', onUpdate: 'CASCADE' },
     name: { type: DataTypes.STRING(100), allowNull: false },
     description: { type: DataTypes.TEXT, allowNull: true },
     credits: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
@@ -346,6 +348,7 @@ function initProduct(seq: Sequelize) {
     active: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
   }, { sequelize: seq, tableName: 'products', timestamps: true, underscored: false,
     indexes: [{ fields: ['productTypeId'], name: 'idx_products_product_type_id' },
+      { fields: ['modalityId'], name: 'idx_products_modality_id' },
       { fields: ['active'], name: 'idx_products_active' }] });
   return Product;
 }
@@ -752,9 +755,10 @@ export function createTenantModels(sequelize: Sequelize) {
   ProductType.belongsToMany(Place, { through: ProductTypePlace, foreignKey: 'productTypeId', otherKey: 'placeId', as: 'places' });
   Place.belongsToMany(ProductType, { through: ProductTypePlace, foreignKey: 'placeId', otherKey: 'productTypeId', as: 'productTypes' });
 
-  // Product → ProductType
+  // Product → ProductType, Modality
   Product.belongsTo(ProductType, { foreignKey: 'productTypeId', as: 'productType' });
   ProductType.hasMany(Product, { foreignKey: 'productTypeId', as: 'products' });
+  Product.belongsTo(Modality, { foreignKey: 'modalityId', as: 'modality' });
 
   // Class → Staff, ProductType, Place
   Class.belongsTo(Staff, { foreignKey: 'staff_id', as: 'teacher' });

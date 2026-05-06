@@ -12,6 +12,7 @@ const createSchema = Joi.object({
     'any.required': 'productTypeId é obrigatório',
     'number.base': 'productTypeId deve ser um número',
   }),
+  modalityId: Joi.number().integer().positive().allow(null).optional(),
   name: Joi.string().max(100).required().messages({
     'any.required': 'Nome é obrigatório',
     'string.max': 'Nome deve ter no máximo 100 caracteres',
@@ -54,6 +55,7 @@ const updateSchema = Joi.object({
   value: Joi.number().precision(2).min(0).optional(),
   validityDays: Joi.number().integer().min(1).optional(),
   purchaseLimit: Joi.number().integer().min(1).allow(null).optional(),
+  modalityId: Joi.number().integer().positive().allow(null).optional(),
   recurring: Joi.boolean().optional(),
   recurringInterval: Joi.when('recurring', {
     is: true,
@@ -95,17 +97,15 @@ export class ProductController {
         where.productTypeId = parseInt(req.query.productTypeId as string);
       }
 
+      const { Modality } = req.tenantDb;
       const { count, rows: products } = await Product.findAndCountAll({
         where,
         limit: perPage,
         offset,
         order: [['name', 'ASC']],
         include: [
-          {
-            model: ProductType,
-            as: 'productType',
-            attributes: ['id', 'name', 'color'],
-          },
+          { model: ProductType, as: 'productType', attributes: ['id', 'name', 'color'] },
+          { model: Modality,     as: 'modality',    attributes: ['id', 'name', 'color'] },
         ],
       });
 
@@ -135,10 +135,13 @@ export class ProductController {
 
   static async getById(req: Request, res: Response): Promise<Response> {
     try {
-      const { Product, ProductType } = req.tenantDb;
+      const { Product, ProductType, Modality } = req.tenantDb;
       const { id } = req.params;
       const product = await Product.findByPk(Number(id), {
-        include: [{ model: ProductType, as: 'productType', attributes: ['id', 'name', 'color'] }],
+        include: [
+          { model: ProductType, as: 'productType', attributes: ['id', 'name', 'color'] },
+          { model: Modality,    as: 'modality',    attributes: ['id', 'name', 'color'] },
+        ],
       });
       if (!product) {
         return res.status(404).json({ success: false, error: 'Produto não encontrado' });
@@ -164,9 +167,9 @@ export class ProductController {
         });
       }
 
-      const { Product, ProductType } = req.tenantDb;
+      const { Product, ProductType, Modality } = req.tenantDb;
       const {
-        productTypeId, name, description,
+        productTypeId, modalityId, name, description,
         credits, value: productValue, validityDays,
         purchaseLimit, recurring, recurringInterval, active,
       } = value as any;
@@ -183,6 +186,7 @@ export class ProductController {
 
       const product = await Product.create({
         productTypeId,
+        modalityId:        modalityId ?? null,
         name:              name.trim(),
         description:       description ?? null,
         credits,
@@ -195,7 +199,10 @@ export class ProductController {
       });
 
       const result = await Product.findByPk(product.id, {
-        include: [{ model: ProductType, as: 'productType', attributes: ['id', 'name', 'color'] }],
+        include: [
+          { model: ProductType, as: 'productType', attributes: ['id', 'name', 'color'] },
+          { model: Modality,    as: 'modality',    attributes: ['id', 'name', 'color'] },
+        ],
       });
 
       return res.status(201).json({
@@ -232,20 +239,21 @@ export class ProductController {
         });
       }
 
-      const { Product, ProductType } = req.tenantDb;
+      const { Product, ProductType, Modality } = req.tenantDb;
       const product = await Product.findByPk(Number(id));
       if (!product) {
         return res.status(404).json({ success: false, error: 'Produto não encontrado' });
       }
 
       const {
-        name, description, credits, value: productValue,
+        modalityId, name, description, credits, value: productValue,
         validityDays, purchaseLimit, recurring, recurringInterval, active,
       } = value;
 
+      if (modalityId    !== undefined) product.modalityId    = modalityId;
       if (name          !== undefined) product.name          = name.trim();
       if (description   !== undefined) product.description   = description;
-      if (credits        !== undefined) product.credits        = credits;
+      if (credits       !== undefined) product.credits       = credits;
       if (productValue  !== undefined) product.value         = productValue;
       if (validityDays  !== undefined) product.validityDays  = validityDays;
       if (purchaseLimit !== undefined) product.purchaseLimit = purchaseLimit;
@@ -263,7 +271,10 @@ export class ProductController {
       await product.save();
 
       const result = await Product.findByPk(product.id, {
-        include: [{ model: ProductType, as: 'productType', attributes: ['id', 'name', 'color'] }],
+        include: [
+          { model: ProductType, as: 'productType', attributes: ['id', 'name', 'color'] },
+          { model: Modality,    as: 'modality',    attributes: ['id', 'name', 'color'] },
+        ],
       });
 
       return res.json({
