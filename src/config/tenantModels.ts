@@ -259,6 +259,33 @@ function initUserGuardian(seq: Sequelize) {
   return UserGuardian;
 }
 
+// ─── Modality ─────────────────────────────────────────────────────────────────
+
+interface ModalityAttr {
+  id: number; name: string; description?: string; color?: string; icon?: string;
+  active: boolean; createdAt?: Date; updatedAt?: Date;
+}
+interface ModalityCreate extends Optional<ModalityAttr, 'id' | 'description' | 'color' | 'icon' | 'active'> {}
+
+function initModality(seq: Sequelize) {
+  class Modality extends Model<ModalityAttr, ModalityCreate> implements ModalityAttr {
+    public id!: number; public name!: string; public description!: string;
+    public color!: string; public icon!: string; public active!: boolean;
+    public readonly createdAt!: Date; public readonly updatedAt!: Date;
+  }
+  Modality.init({
+    id: { type: DataTypes.INTEGER.UNSIGNED, autoIncrement: true, primaryKey: true },
+    name: { type: DataTypes.STRING(100), allowNull: false, unique: true },
+    description: { type: DataTypes.TEXT, allowNull: true },
+    color: { type: DataTypes.STRING(20), allowNull: true },
+    icon: { type: DataTypes.STRING(100), allowNull: true },
+    active: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+  }, { sequelize: seq, tableName: 'modalities', timestamps: true, underscored: false,
+    indexes: [{ unique: true, fields: ['name'], name: 'uq_modalities_name' },
+      { fields: ['active'], name: 'idx_modalities_active' }] });
+  return Modality;
+}
+
 // ─── ProductType ──────────────────────────────────────────────────────────────
 
 interface ProductTypeAttr {
@@ -690,6 +717,7 @@ export function createTenantModels(sequelize: Sequelize) {
   const Staff             = initStaff(sequelize);
   const OtpCode           = initOtpCode(sequelize);
   const ClientUser        = initClientUser(sequelize);
+  const Modality          = initModality(sequelize);
   const UserLevel         = initUserLevel(sequelize);
   const UserGuardian      = initUserGuardian(sequelize);
   const ProductType       = initProductType(sequelize);
@@ -765,6 +793,7 @@ export function createTenantModels(sequelize: Sequelize) {
     Role, Permission, RolePermission, UserRole,
     Staff, OtpCode,
     ClientUser, UserLevel, UserGuardian,
+    Modality,
     ProductType, Product, Place, ProductTypePlace,
     Class, ClassStudent, WaitingList,
     StudentCredit, CreditTransaction,
