@@ -111,7 +111,7 @@ export class ModalityController {
       const modality = await Modality.findByPk(Number(id));
       if (!modality) return res.status(404).json({ success: false, error: 'Modalidade não encontrada' });
 
-      await modality.destroy();
+      await modality.update({ active: false });
       return res.json({ success: true, message: 'Modalidade removida com sucesso' });
     } catch (error: any) {
       return res.status(500).json({ success: false, error: 'Erro ao remover modalidade' });
