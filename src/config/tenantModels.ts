@@ -392,17 +392,18 @@ function initProductTypePlace(seq: Sequelize) {
 // ─── Class ────────────────────────────────────────────────────────────────────
 
 interface ClassAttr {
-  id: number; staff_id: number; product_type_id: number; place_id?: number | null;
+  id: number; staff_id: number; modality_id: number; product_type_id?: number | null; place_id?: number | null;
   date: string; time: string; limit: number; spots_taken: number; has_commission: boolean;
   kickback_rule?: string | null; kickback?: number | null; active: boolean;
   createdAt?: Date; updatedAt?: Date;
 }
-interface ClassCreate extends Optional<ClassAttr, 'id' | 'place_id' | 'spots_taken' | 'has_commission' | 'kickback_rule' | 'kickback' | 'active'> {}
+interface ClassCreate extends Optional<ClassAttr, 'id' | 'product_type_id' | 'place_id' | 'spots_taken' | 'has_commission' | 'kickback_rule' | 'kickback' | 'active'> {}
 
 function initClass(seq: Sequelize) {
   class Class extends Model<ClassAttr, ClassCreate> implements ClassAttr {
-    public id!: number; public staff_id!: number; public product_type_id!: number;
-    public place_id!: number | null; public date!: string; public time!: string;
+    public id!: number; public staff_id!: number; public modality_id!: number;
+    public product_type_id!: number | null; public place_id!: number | null;
+    public date!: string; public time!: string;
     public limit!: number; public spots_taken!: number; public has_commission!: boolean;
     public kickback_rule!: string | null; public kickback!: number | null; public active!: boolean;
     public readonly createdAt!: Date; public readonly updatedAt!: Date;
@@ -410,7 +411,9 @@ function initClass(seq: Sequelize) {
   Class.init({
     id: { type: DataTypes.INTEGER.UNSIGNED, autoIncrement: true, primaryKey: true },
     staff_id: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, references: { model: 'staff', key: 'id' } },
-    product_type_id: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, references: { model: 'product_types', key: 'id' } },
+    modality_id: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false,
+      references: { model: 'modalities', key: 'id' }, onDelete: 'RESTRICT', onUpdate: 'CASCADE' },
+    product_type_id: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true, references: { model: 'product_types', key: 'id' } },
     place_id: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true, references: { model: 'places', key: 'id' } },
     date: { type: DataTypes.DATEONLY, allowNull: false },
     time: { type: DataTypes.TIME, allowNull: false },
@@ -760,8 +763,9 @@ export function createTenantModels(sequelize: Sequelize) {
   ProductType.hasMany(Product, { foreignKey: 'productTypeId', as: 'products' });
   Product.belongsTo(Modality, { foreignKey: 'modalityId', as: 'modality' });
 
-  // Class → Staff, ProductType, Place
+  // Class → Staff, Modality, ProductType, Place
   Class.belongsTo(Staff, { foreignKey: 'staff_id', as: 'teacher' });
+  Class.belongsTo(Modality, { foreignKey: 'modality_id', as: 'modality' });
   Class.belongsTo(ProductType, { foreignKey: 'product_type_id', as: 'productType' });
   Class.belongsTo(Place, { foreignKey: 'place_id', as: 'place' });
   Class.hasMany(ClassStudent, { foreignKey: 'class_id', as: 'enrollments' });

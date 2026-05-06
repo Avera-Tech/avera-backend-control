@@ -13,12 +13,20 @@ function includeTeacher(db: TenantDb) {
   return { model: db.Staff, as: 'teacher', attributes: ['id', 'name'] };
 }
 
+function includeModality(db: TenantDb) {
+  return { model: db.Modality, as: 'modality', attributes: ['id', 'name', 'color'] };
+}
+
 function includeProductType(db: TenantDb) {
   return { model: db.ProductType, as: 'productType', attributes: ['id', 'name', 'color'] };
 }
 
 function includePlace(db: TenantDb) {
   return { model: db.Place, as: 'place', attributes: ['id', 'name'] };
+}
+
+function defaultIncludes(db: TenantDb) {
+  return [includeTeacher(db), includeModality(db), includeProductType(db), includePlace(db)];
 }
 
 function validateDatetime(date: unknown, time: unknown): string | null {
@@ -29,13 +37,13 @@ function validateDatetime(date: unknown, time: unknown): string | null {
 
 export async function createClass(req: Request, res: Response): Promise<Response> {
   try {
-    const { Class, Staff } = req.tenantDb;
-    const { staff_id, product_type_id, date, time, limit, place_id, has_commission, kickback_rule, kickback } = req.body;
+    const { Class, Staff, Modality } = req.tenantDb;
+    const { staff_id, modality_id, product_type_id, date, time, limit, place_id, has_commission, kickback_rule, kickback } = req.body;
 
-    if (!staff_id || !product_type_id || !date || !time || !limit) {
+    if (!staff_id || !modality_id || !date || !time || !limit) {
       return res.status(400).json({
         success: false,
-        message: 'staff_id, product_type_id, date, time e limit são obrigatórios',
+        message: 'staff_id, modality_id, date, time e limit são obrigatórios',
       });
     }
 
@@ -46,21 +54,24 @@ export async function createClass(req: Request, res: Response): Promise<Response
     if (!staff) return res.status(400).json({ success: false, message: 'staff_id não encontrado' });
     if (!staff.active) return res.status(400).json({ success: false, message: 'Funcionário está inativo' });
 
+    const modality = await Modality.findByPk(Number(modality_id), { attributes: ['id', 'active'] });
+    if (!modality) return res.status(400).json({ success: false, message: 'modality_id não encontrado' });
+    if (!modality.active) return res.status(400).json({ success: false, message: 'Modalidade está inativa' });
+
     const created = await Class.create({
-      staff_id: Number(staff_id),
-      product_type_id: Number(product_type_id),
-      date: String(date),
-      time: String(time),
-      limit: Number(limit),
-      place_id: place_id != null ? Number(place_id) : undefined,
-      has_commission: has_commission ?? false,
-      kickback_rule: kickback_rule ?? null,
-      kickback: kickback != null ? Number(kickback) : null,
+      staff_id:        Number(staff_id),
+      modality_id:     Number(modality_id),
+      product_type_id: product_type_id != null ? Number(product_type_id) : undefined,
+      date:            String(date),
+      time:            String(time),
+      limit:           Number(limit),
+      place_id:        place_id != null ? Number(place_id) : undefined,
+      has_commission:  has_commission ?? false,
+      kickback_rule:   kickback_rule ?? null,
+      kickback:        kickback != null ? Number(kickback) : null,
     });
 
-    const data = await Class.findByPk(created.id, {
-      include: [includeTeacher(req.tenantDb), includeProductType(req.tenantDb), includePlace(req.tenantDb)],
-    });
+    const data = await Class.findByPk(created.id, { include: defaultIncludes(req.tenantDb) });
 
     return res.status(201).json({ success: true, data, message: 'Aula criada com sucesso' });
   } catch (err: unknown) {
@@ -95,7 +106,7 @@ export async function listClasses(req: Request, res: Response): Promise<Response
 
     const { count, rows } = await Class.findAndCountAll({
       where,
-      include: [includeTeacher(req.tenantDb), includeProductType(req.tenantDb), includePlace(req.tenantDb)],
+      include: defaultIncludes(req.tenantDb),
       order: [['date', 'ASC'], ['time', 'ASC']],
       limit,
       offset,
@@ -157,7 +168,7 @@ export async function updateClass(req: Request, res: Response): Promise<Response
     if (!cls) return res.status(404).json({ success: false, message: 'Aula não encontrada' });
 
     const {
-      staff_id, product_type_id, place_id, date, time,
+      staff_id, modality_id, product_type_id, place_id, date, time,
       limit, has_commission, kickback_rule, kickback, active,
     } = req.body;
 
@@ -179,7 +190,8 @@ export async function updateClass(req: Request, res: Response): Promise<Response
       updates.staff_id = Number(staff_id);
     }
 
-    if (product_type_id !== undefined) updates.product_type_id = Number(product_type_id);
+    if (modality_id !== undefined)     updates.modality_id     = Number(modality_id);
+    if (product_type_id !== undefined) updates.product_type_id = product_type_id != null ? Number(product_type_id) : null;
     if (place_id !== undefined) updates.place_id = place_id != null ? Number(place_id) : null;
     if (limit !== undefined) updates.limit = Number(limit);
     if (has_commission !== undefined) updates.has_commission = has_commission;
@@ -194,7 +206,7 @@ export async function updateClass(req: Request, res: Response): Promise<Response
     await cls.update(updates);
 
     const data = await Class.findByPk(cls.id, {
-      include: [includeTeacher(req.tenantDb), includeProductType(req.tenantDb), includePlace(req.tenantDb)],
+      include: defaultIncludes(req.tenantDb),
     });
 
     return res.json({ success: true, data, message: 'Aula atualizada com sucesso' });
