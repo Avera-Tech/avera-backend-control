@@ -76,11 +76,8 @@ export async function createClass(req: Request, res: Response): Promise<Response
     return res.status(201).json({ success: true, data, message: 'Aula criada com sucesso' });
   } catch (err: unknown) {
     console.error('createClass error:', err);
-    const message = err instanceof Error ? err.message : undefined;
-    return res.status(500).json({
-      success: false,
-      message: process.env.NODE_ENV === 'development' ? message : 'Erro ao criar aula',
-    });
+    const message = err instanceof Error ? err.message : String(err);
+    return res.status(500).json({ success: false, message });
   }
 }
 
