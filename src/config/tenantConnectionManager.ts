@@ -33,8 +33,8 @@ export function getTenantDb(config: TenantConnConfig): TenantDb {
   });
 
   const db = createTenantModels(sequelize);
-  // Cria tabelas novas que ainda não existem (não altera nem destrói existentes)
-  sequelize.sync({ force: false }).catch((err) =>
+  // Cria tabelas novas e adiciona colunas faltantes (não destrói dados existentes)
+  sequelize.sync({ alter: true }).catch((err) =>
     console.error(`[sync] Erro ao sincronizar tabelas para ${config.clientId}:`, err)
   );
   pool.set(config.clientId, db);
