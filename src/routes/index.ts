@@ -17,6 +17,7 @@ import waitingListRoutes from '../modules/class/routes/waitingList.routes';
 import placeRoutes from '../modules/place/routes/place.routes';
 import checkoutRoutes from './checkout.routes';
 import themeRoutes from './theme.routes';
+import paymentConfigRoutes from '../core/payment/routes/payment-config.routes';
 import companyRoutes from './company.routes';
 import integrationRoutes from '../fit/integrations/routes/integrationRoutes';
 import { pixWebhook } from '../core/checkout/controllers/Pix.controller';
@@ -64,6 +65,7 @@ router.use('/staff', staffRoutes);
 router.use('/users', userRoutes);
 router.use('/checkout', checkoutRoutes);
 router.use('/theme', themeRoutes);
+router.use('/payment-config', paymentConfigRoutes);
 router.use('/company', companyRoutes);
 router.use('/integrations', integrationRoutes);
 

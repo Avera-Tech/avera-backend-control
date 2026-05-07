@@ -686,6 +686,36 @@ function initExternalCheckin(seq: Sequelize) {
   return ExternalCheckin;
 }
 
+// ─── PaymentConfig ────────────────────────────────────────────────────────────
+
+type PaymentGateway = 'pagarme';
+type PaymentMode    = 'sandbox' | 'production';
+
+interface PaymentConfigAttr {
+  id: number; gateway: PaymentGateway; mode: PaymentMode;
+  apiKey: string; webhookSecret?: string | null; active: boolean;
+  createdAt?: Date; updatedAt?: Date;
+}
+interface PaymentConfigCreate extends Optional<PaymentConfigAttr, 'id' | 'webhookSecret' | 'active'> {}
+
+function initPaymentConfig(seq: Sequelize) {
+  class PaymentConfig extends Model<PaymentConfigAttr, PaymentConfigCreate> implements PaymentConfigAttr {
+    public id!: number; public gateway!: PaymentGateway; public mode!: PaymentMode;
+    public apiKey!: string; public webhookSecret!: string | null; public active!: boolean;
+    public readonly createdAt!: Date; public readonly updatedAt!: Date;
+  }
+  PaymentConfig.init({
+    id:            { type: DataTypes.INTEGER.UNSIGNED, autoIncrement: true, primaryKey: true },
+    gateway:       { type: DataTypes.STRING(50), allowNull: false },
+    mode:          { type: DataTypes.STRING(20), allowNull: false, defaultValue: 'sandbox' },
+    apiKey:        { type: DataTypes.TEXT, allowNull: false },
+    webhookSecret: { type: DataTypes.TEXT, allowNull: true },
+    active:        { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+  }, { sequelize: seq, tableName: 'payment_configs', timestamps: true, underscored: false,
+    indexes: [{ unique: true, fields: ['gateway'], name: 'uq_payment_configs_gateway' }] });
+  return PaymentConfig;
+}
+
 // ─── IntegrationConfig ────────────────────────────────────────────────────────
 
 interface IntegrationConfigAttr {
@@ -742,6 +772,7 @@ export function createTenantModels(sequelize: Sequelize) {
   const Transaction       = initTransaction(sequelize);
   const ExternalCheckin   = initExternalCheckin(sequelize);
   const IntegrationConfig = initIntegrationConfig(sequelize);
+  const PaymentConfig     = initPaymentConfig(sequelize);
 
   // ── Associations ────────────────────────────────────────────────────────────
 
@@ -809,7 +840,7 @@ export function createTenantModels(sequelize: Sequelize) {
     Class, ClassStudent, WaitingList,
     StudentCredit, CreditTransaction,
     Item, Transaction,
-    ExternalCheckin, IntegrationConfig,
+    ExternalCheckin, IntegrationConfig, PaymentConfig,
   };
 }
 
