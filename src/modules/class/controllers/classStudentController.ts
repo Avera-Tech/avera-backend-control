@@ -14,7 +14,7 @@ export async function enrollStudent(req: Request, res: Response): Promise<Respon
   try {
     const { Class, ClassStudent, sequelize } = req.tenantDb;
     const class_id = Number(req.params.id);
-    const { user_id } = req.body;
+    const { user_id, walk_in = false } = req.body;
 
     if (!user_id) {
       return res.status(400).json({ success: false, message: 'user_id é obrigatório' });
@@ -23,7 +23,9 @@ export async function enrollStudent(req: Request, res: Response): Promise<Respon
     const cls = await Class.findByPk(class_id, { attributes: ['id', 'active', 'limit', 'spots_taken'] });
     if (!cls) return res.status(404).json({ success: false, message: 'Aula não encontrada' });
     if (!cls.active) return res.status(400).json({ success: false, message: 'Aula não está ativa' });
-    if (cls.spots_taken >= cls.limit) {
+
+    // Walk-in bypasses capacity check — the student is physically present
+    if (!walk_in && cls.spots_taken >= cls.limit) {
       return res.status(400).json({ success: false, message: 'Aula lotada' });
     }
 
@@ -34,13 +36,13 @@ export async function enrollStudent(req: Request, res: Response): Promise<Respon
 
     const enrollment = await sequelize.transaction(async (t) => {
       const created = await ClassStudent.create(
-        { class_id, user_id: Number(user_id), status: 'enrolled' },
+        { class_id, user_id: Number(user_id), status: 'enrolled', walk_in: Boolean(walk_in) },
         { transaction: t }
       );
 
       await Class.increment('spots_taken', { by: 1, where: { id: class_id }, transaction: t });
 
-      console.log(`consume 1 credit for user ${user_id}`);
+      if (!walk_in) console.log(`consume 1 credit for user ${user_id}`);
 
       return created;
     });
@@ -50,11 +52,8 @@ export async function enrollStudent(req: Request, res: Response): Promise<Respon
     return res.status(201).json({ success: true, data, message: 'Matrícula realizada com sucesso' });
   } catch (err: unknown) {
     console.error('enrollStudent error:', err);
-    const message = err instanceof Error ? err.message : undefined;
-    return res.status(500).json({
-      success: false,
-      message: process.env.NODE_ENV === 'development' ? message : 'Erro ao matricular aluno',
-    });
+    const message = err instanceof Error ? err.message : String(err);
+    return res.status(500).json({ success: false, message });
   }
 }
 

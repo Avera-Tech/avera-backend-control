@@ -434,15 +434,17 @@ type EnrollmentStatus = 'enrolled' | 'cancelled' | 'attended' | 'missed';
 interface ClassStudentAttr {
   id: number; class_id: number; user_id: number; status: EnrollmentStatus;
   checkin: boolean; checkin_at?: Date | null; transaction_id?: number | null;
+  walk_in: boolean;
   createdAt?: Date; updatedAt?: Date;
 }
-interface ClassStudentCreate extends Optional<ClassStudentAttr, 'id' | 'status' | 'checkin' | 'checkin_at' | 'transaction_id'> {}
+interface ClassStudentCreate extends Optional<ClassStudentAttr, 'id' | 'status' | 'checkin' | 'checkin_at' | 'transaction_id' | 'walk_in'> {}
 
 function initClassStudent(seq: Sequelize) {
   class ClassStudent extends Model<ClassStudentAttr, ClassStudentCreate> implements ClassStudentAttr {
     public id!: number; public class_id!: number; public user_id!: number;
     public status!: EnrollmentStatus; public checkin!: boolean;
     public checkin_at!: Date | null; public transaction_id!: number | null;
+    public walk_in!: boolean;
     public readonly createdAt!: Date; public readonly updatedAt!: Date;
   }
   ClassStudent.init({
@@ -453,6 +455,7 @@ function initClassStudent(seq: Sequelize) {
     checkin: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
     checkin_at: { type: DataTypes.DATE, allowNull: true },
     transaction_id: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
+    walk_in: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
   }, { sequelize: seq, tableName: 'class_students', timestamps: true,
     indexes: [{ unique: true, fields: ['class_id', 'user_id'], name: 'uq_class_students_class_user' }] });
   return ClassStudent;
