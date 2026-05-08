@@ -182,7 +182,15 @@ router.get('/config', async (req: Request, res: Response) => {
       attributes: ['id', 'platform', 'gymId', 'autoAccept', 'active', 'lastSyncAt'],
     });
 
-    return res.status(200).json({ success: true, data: configs });
+    const clientId = req.headers['x-client-id'] as string;
+    const tenant = await TenantConfig.findOne({ where: { slug: clientId }, attributes: ['control_api_url', 'slug'] });
+    const baseUrl = tenant?.control_api_url ?? `${req.protocol}://${req.get('host')}`;
+
+    const webhookUrls: Record<string, string> = {
+      wellhub: `${baseUrl}/api/webhooks/wellhub/${clientId}/checkin`,
+    };
+
+    return res.status(200).json({ success: true, data: configs, webhookUrls });
   } catch (err: any) {
     return res.status(500).json({ success: false, message: 'Erro ao buscar configurações' });
   }

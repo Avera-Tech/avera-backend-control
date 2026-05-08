@@ -53,7 +53,7 @@ async function findUserByWellhubId(payload: WellhubCheckinPayload, db: TenantDb)
 
   const existing = allUsers.find((u) => {
     try {
-      const meta = JSON.parse((u as any).notes || '{}');
+      const meta = JSON.parse(u.notes || '{}');
       return meta.wellhub_id === payload.gympass_id;
     } catch {
       return false;
@@ -70,9 +70,9 @@ async function findUserByWellhubId(payload: WellhubCheckinPayload, db: TenantDb)
     });
 
     if (byEmail) {
-      const meta = JSON.parse((byEmail as any).notes || '{}');
+      const meta = JSON.parse(byEmail.notes || '{}');
       meta.wellhub_id = payload.gympass_id;
-      await (byEmail as any).update({ notes: JSON.stringify(meta) });
+      await byEmail.update({ notes: JSON.stringify(meta) });
       return { user: byEmail, isNew: false };
     }
   }

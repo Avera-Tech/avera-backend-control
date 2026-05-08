@@ -194,11 +194,12 @@ interface ClientUserAttr {
   phone?: string | null; document?: string | null; birthday?: Date | null;
   height?: number | null; weight?: number | null; levelId?: number | null;
   address?: string | null; city?: string | null; state?: string | null;
-  zipCode?: string | null; active: boolean; createdAt?: Date; updatedAt?: Date;
+  zipCode?: string | null; notes?: string | null; active: boolean;
+  createdAt?: Date; updatedAt?: Date;
 }
 interface ClientUserCreate extends Optional<ClientUserAttr,
   'id' | 'password' | 'phone' | 'document' | 'birthday' | 'height' | 'weight' |
-  'levelId' | 'address' | 'city' | 'state' | 'zipCode' | 'active'> {}
+  'levelId' | 'address' | 'city' | 'state' | 'zipCode' | 'notes' | 'active'> {}
 
 function initClientUser(seq: Sequelize) {
   class ClientUser extends Model<ClientUserAttr, ClientUserCreate> implements ClientUserAttr {
@@ -206,8 +207,8 @@ function initClientUser(seq: Sequelize) {
     public password!: string | null; public phone!: string | null; public document!: string | null;
     public birthday!: Date | null; public height!: number | null; public weight!: number | null;
     public levelId!: number | null; public address!: string | null; public city!: string | null;
-    public state!: string | null; public zipCode!: string | null; public active!: boolean;
-    public readonly createdAt!: Date; public readonly updatedAt!: Date;
+    public state!: string | null; public zipCode!: string | null; public notes!: string | null;
+    public active!: boolean; public readonly createdAt!: Date; public readonly updatedAt!: Date;
   }
   ClientUser.init({
     id: { type: DataTypes.INTEGER.UNSIGNED, autoIncrement: true, primaryKey: true },
@@ -225,6 +226,7 @@ function initClientUser(seq: Sequelize) {
     city: { type: DataTypes.STRING(100), allowNull: true },
     state: { type: DataTypes.STRING(2), allowNull: true },
     zipCode: { type: DataTypes.STRING(10), allowNull: true },
+    notes: { type: DataTypes.TEXT, allowNull: true },
     active: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
   }, { sequelize: seq, tableName: 'users', timestamps: true, underscored: false,
     indexes: [{ unique: true, fields: ['email'] }] });
