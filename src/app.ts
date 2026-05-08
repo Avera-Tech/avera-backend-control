@@ -5,6 +5,8 @@ import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import path from 'node:path';
 import routes from './routes';
+import appV1Routes from './routes/app.v1.routes';
+import { resolveTenant } from './core/middleware/resolveTenant';
 
 dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
@@ -40,6 +42,7 @@ const limiter = rateLimit({
 });
 
 app.use('/api/', limiter);
+app.use('/app/', limiter);
 
 /**
  * Middlewares de Parsing
@@ -61,6 +64,7 @@ app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
  * Rotas
  */
 app.use('/api', routes);
+app.use('/app/v1', resolveTenant, appV1Routes);
 
 /**
  * Rota raiz
