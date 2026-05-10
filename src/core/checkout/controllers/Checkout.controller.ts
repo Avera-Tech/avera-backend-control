@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { TenantDb } from '../../../config/tenantModels';
 import { saveTransaction } from './Transaction.controller';
-import { updateCustomerBalance } from './Balance.controller';
+import { addCreditsForItems } from './Balance.controller';
 import { checkPurchaseLimit, createItemsAfterTransaction } from './Items.controller';
 import {
   createCreditCardOrder,
@@ -144,7 +144,7 @@ export const checkoutCard = async (req: Request, res: Response): Promise<Respons
       return res.status(500).json({ success: false, message: 'Falha ao salvar transação.' });
     }
 
-    await updateCustomerBalance(Number(userId), creditTotal, result.data.id, true, productTypeId!, req.tenantDb);
+    await addCreditsForItems(Number(userId), items.map(i => ({ productId: Number(i.itemId), credits: i.credit, quantity: i.quantity })), result.data.id, req.tenantDb);
 
     try {
       await createItemsAfterTransaction(result.data.id, Number(userId), items, req.tenantDb);
@@ -213,7 +213,7 @@ export const checkoutCash = async (req: Request, res: Response): Promise<Respons
       return res.status(500).json({ success: false, message: 'Falha ao salvar transação.' });
     }
 
-    await updateCustomerBalance(Number(userId), creditTotal, result.data.id, true, productTypeId!, req.tenantDb);
+    await addCreditsForItems(Number(userId), items.map(i => ({ productId: Number(i.itemId), credits: i.credit, quantity: i.quantity })), result.data.id, req.tenantDb);
 
     try {
       await createItemsAfterTransaction(result.data.id, Number(userId), items, req.tenantDb);

@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { getTenantDb } from '../../../config/tenantConnectionManager';
 import TenantConfig from '../../../master/models/TenantConfig.model';
 import { savePendingPixTransaction } from './Transaction.controller';
-import { updateCustomerBalance } from './Balance.controller';
+import { updateCustomerBalance, addCreditsFromItemRows } from './Balance.controller';
 import { checkPurchaseLimit, createItemsAfterTransaction, activateItemsByTransaction } from './Items.controller';
 import { createPixOrder, PagarmeOrderItem } from '../services/pagarme.service';
 import { TenantDb } from '../../../config/tenantModels';
@@ -219,14 +219,7 @@ async function handlePixPaid(chargeData: any, db: TenantDb) {
 
     await transaction.update({ status: 'paid', paidAt: new Date() });
 
-    await updateCustomerBalance(
-      transaction.studentId,
-      transaction.balance,
-      transaction.transactionId,
-      true,
-      transaction.productTypeId,
-      db
-    );
+    await addCreditsFromItemRows(transaction.studentId, transaction.transactionId, db);
 
     await activateItemsByTransaction(transaction.transactionId, db);
 
