@@ -294,16 +294,20 @@ function initModality(seq: Sequelize) {
 
 // ─── ProductType ──────────────────────────────────────────────────────────────
 
+export type BillingType = 'avulso' | 'recorrente' | 'plano' | 'cortesia';
+
 interface ProductTypeAttr {
   id: number; name: string; description?: string; color?: string; icon?: string;
+  billingType?: BillingType | null;
   active: boolean; createdAt?: Date; updatedAt?: Date;
 }
-interface ProductTypeCreate extends Optional<ProductTypeAttr, 'id' | 'description' | 'color' | 'icon' | 'active'> {}
+interface ProductTypeCreate extends Optional<ProductTypeAttr, 'id' | 'description' | 'color' | 'icon' | 'billingType' | 'active'> {}
 
 function initProductType(seq: Sequelize) {
   class ProductType extends Model<ProductTypeAttr, ProductTypeCreate> implements ProductTypeAttr {
     public id!: number; public name!: string; public description!: string;
-    public color!: string; public icon!: string; public active!: boolean;
+    public color!: string; public icon!: string; public billingType!: BillingType | null;
+    public active!: boolean;
     public readonly createdAt!: Date; public readonly updatedAt!: Date;
   }
   ProductType.init({
@@ -311,6 +315,7 @@ function initProductType(seq: Sequelize) {
     name: { type: DataTypes.STRING(100), allowNull: false, unique: true },
     description: { type: DataTypes.TEXT, allowNull: true },
     color: { type: DataTypes.STRING(20), allowNull: true },
+    billingType: { type: DataTypes.STRING(20), allowNull: true, field: 'billing_type' },
     icon: { type: DataTypes.STRING(100), allowNull: true },
     active: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
   }, { sequelize: seq, tableName: 'product_types', timestamps: true, underscored: false,
