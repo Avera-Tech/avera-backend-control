@@ -3,10 +3,8 @@
 
 const PAGARME_BASE_URL = 'https://api.pagar.me/core/v5';
 
-function getAuthHeader(): string {
-  const key = process.env.PAGARME_SECRET_KEY;
-  if (!key) throw new Error('PAGARME_SECRET_KEY não configurada.');
-  return 'Basic ' + Buffer.from(`${key}:`).toString('base64');
+function makeAuthHeader(apiKey: string): string {
+  return 'Basic ' + Buffer.from(`${apiKey}:`).toString('base64');
 }
 
 export interface PagarmeOrderItem {
@@ -55,7 +53,8 @@ export interface CreditCardPayment {
 export async function createCreditCardOrder(
   customer: PagarmeCustomer,
   items: PagarmeOrderItem[],
-  card: CreditCardPayment
+  card: CreditCardPayment,
+  apiKey: string
 ) {
   const billingAddress = card.billingAddress ?? {
     line_1: customer.address?.line_1 ?? 'Endereço não informado',
@@ -97,7 +96,7 @@ export async function createCreditCardOrder(
     ],
   };
 
-  return sendOrder(payload);
+  return sendOrder(payload, apiKey);
 }
 
 // ─── PIX ─────────────────────────────────────────────────────────────────────
@@ -112,7 +111,8 @@ export interface PixPayment {
 export async function createPixOrder(
   customer: PagarmeCustomer,
   items: PagarmeOrderItem[],
-  pix: PixPayment
+  pix: PixPayment,
+  apiKey: string
 ) {
   const phone = extractPhone(customer);
 
@@ -139,7 +139,7 @@ export async function createPixOrder(
     ...(pix.metadata ? { metadata: pix.metadata } : {}),
   };
 
-  return sendOrder(payload);
+  return sendOrder(payload, apiKey);
 }
 
 // ─── Dinheiro / Cash ─────────────────────────────────────────────────────────
@@ -153,7 +153,8 @@ export interface CashPayment {
 export async function createCashOrder(
   customer: PagarmeCustomer,
   items: PagarmeOrderItem[],
-  cash: CashPayment
+  cash: CashPayment,
+  apiKey: string
 ) {
   const payload = {
     closed: true,
@@ -180,17 +181,17 @@ export async function createCashOrder(
     ],
   };
 
-  return sendOrder(payload);
+  return sendOrder(payload, apiKey);
 }
 
 // ─── Helper: envio para API ───────────────────────────────────────────────────
 
-async function sendOrder(payload: any) {
+async function sendOrder(payload: any, apiKey: string) {
   try {
     const response = await fetch(`${PAGARME_BASE_URL}/orders`, {
       method: 'POST',
       headers: {
-        Authorization: getAuthHeader(),
+        Authorization: makeAuthHeader(apiKey),
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
