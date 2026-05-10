@@ -1,12 +1,6 @@
 import { Request, Response } from 'express';
 import Joi from 'joi';
 
-type RecurringInterval = 'weekly' | 'monthly' | 'quarterly' | 'semiannual' | 'annual';
-
-const RECURRING_INTERVALS: RecurringInterval[] = [
-  'weekly', 'monthly', 'quarterly', 'semiannual', 'annual',
-];
-
 const createSchema = Joi.object({
   productTypeId: Joi.number().integer().positive().required().messages({
     'any.required': 'productTypeId é obrigatório',
@@ -33,18 +27,6 @@ const createSchema = Joi.object({
   purchaseLimit: Joi.number().integer().min(1).allow(null).optional().messages({
     'number.min': 'Limite de compras deve ser no mínimo 1',
   }),
-  recurring: Joi.boolean().default(false),
-  recurringInterval: Joi.when('recurring', {
-    is: true,
-    then: Joi.string()
-      .valid(...RECURRING_INTERVALS)
-      .required()
-      .messages({
-        'any.required': 'recurringInterval é obrigatório quando recurring = true',
-        'any.only': `recurringInterval deve ser um dos valores: ${RECURRING_INTERVALS.join(', ')}`,
-      }),
-    otherwise: Joi.string().valid(...RECURRING_INTERVALS).allow(null).optional(),
-  }),
   active: Joi.boolean().default(true),
 });
 
@@ -56,18 +38,6 @@ const updateSchema = Joi.object({
   validityDays: Joi.number().integer().min(1).optional(),
   purchaseLimit: Joi.number().integer().min(1).allow(null).optional(),
   modalityId: Joi.number().integer().positive().allow(null).optional(),
-  recurring: Joi.boolean().optional(),
-  recurringInterval: Joi.when('recurring', {
-    is: true,
-    then: Joi.string()
-      .valid(...RECURRING_INTERVALS)
-      .required()
-      .messages({
-        'any.required': 'recurringInterval é obrigatório quando recurring = true',
-        'any.only': `recurringInterval deve ser um dos valores: ${RECURRING_INTERVALS.join(', ')}`,
-      }),
-    otherwise: Joi.string().valid(...RECURRING_INTERVALS).allow(null).optional(),
-  }),
   active: Joi.boolean().optional(),
 })
   .min(1)
@@ -171,7 +141,7 @@ export class ProductController {
       const {
         productTypeId, modalityId, name, description,
         credits, value: productValue, validityDays,
-        purchaseLimit, recurring, recurringInterval, active,
+        purchaseLimit, active,
       } = value as any;
 
       const productType = await ProductType.findOne({
@@ -184,6 +154,8 @@ export class ProductController {
         });
       }
 
+      const isRecurring = productType.billingType === 'recorrente' || productType.billingType === 'plano';
+
       const product = await Product.create({
         productTypeId,
         modalityId:        modalityId ?? null,
@@ -193,8 +165,8 @@ export class ProductController {
         value:             productValue,
         validityDays,
         purchaseLimit:     purchaseLimit ?? null,
-        recurring,
-        recurringInterval: recurring ? recurringInterval : null,
+        recurring:         isRecurring,
+        recurringInterval: isRecurring ? 'monthly' : null,
         active,
       });
 
@@ -247,7 +219,7 @@ export class ProductController {
 
       const {
         modalityId, name, description, credits, value: productValue,
-        validityDays, purchaseLimit, recurring, recurringInterval, active,
+        validityDays, purchaseLimit, active,
       } = value;
 
       if (modalityId    !== undefined) product.modalityId    = modalityId;
@@ -258,15 +230,6 @@ export class ProductController {
       if (validityDays  !== undefined) product.validityDays  = validityDays;
       if (purchaseLimit !== undefined) product.purchaseLimit = purchaseLimit;
       if (active        !== undefined) product.active        = active;
-
-      if (recurring !== undefined) {
-        product.recurring = recurring;
-        product.recurringInterval = recurring
-          ? (recurringInterval ?? product.recurringInterval)
-          : null as any;
-      } else if (recurringInterval !== undefined) {
-        product.recurringInterval = recurringInterval;
-      }
 
       await product.save();
 
