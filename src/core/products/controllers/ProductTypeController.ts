@@ -124,13 +124,29 @@ export class ProductTypeController {
   static async delete(req: Request, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const { ProductType } = req.tenantDb;
+      const { ProductType, Product, Class } = req.tenantDb;
       const productType = await ProductType.findByPk(Number(id));
       if (!productType) return res.status(404).json({ success: false, error: 'Tipo de produto não encontrado' });
 
+      const productsCount = await Product.count({ where: { productTypeId: Number(id) } });
+      if (productsCount > 0) {
+        return res.status(409).json({
+          success: false,
+          error: `Não é possível remover: existem ${productsCount} produto(s) vinculado(s) a este tipo`,
+        });
+      }
+
+      const classesCount = await Class.count({ where: { product_type_id: Number(id) } });
+      if (classesCount > 0) {
+        return res.status(409).json({
+          success: false,
+          error: `Não é possível remover: existem ${classesCount} aula(s) vinculada(s) a este tipo`,
+        });
+      }
+
       await productType.destroy();
       return res.json({ success: true, message: 'Tipo de produto removido com sucesso' });
-    } catch (error: any) {
+    } catch {
       return res.status(500).json({ success: false, error: 'Erro ao remover tipo de produto' });
     }
   }
