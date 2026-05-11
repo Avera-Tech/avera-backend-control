@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authenticateToken } from '../core/middleware/authenticateToken';
 import { checkoutCard, checkoutCash } from '../core/checkout/controllers/Checkout.controller';
 import { checkoutPix } from '../core/checkout/controllers/Pix.controller';
+import { listTransactions } from '../core/checkout/controllers/TransactionList.controller';
 
 const router = Router();
 
@@ -54,6 +55,7 @@ const router = Router();
  *       500:
  *         description: Erro ao processar pagamento
  */
+router.get('/', authenticateToken, listTransactions);
 router.post('/card', authenticateToken, checkoutCard);
 
 /**
