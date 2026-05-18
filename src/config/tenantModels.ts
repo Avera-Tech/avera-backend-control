@@ -718,6 +718,79 @@ function initPaymentConfig(seq: Sequelize) {
   return PaymentConfig;
 }
 
+// ─── BookingReservation ───────────────────────────────────────────────────────
+
+type BookingStatus = 'pending' | 'confirmed' | 'rejected' | 'cancelled' | 'late-cancelled';
+
+interface BookingReservationAttr {
+  id: number;
+  eventId: string;        // event_id único enviado pelo Wellhub
+  eventType: string;      // 'booking-requested' | 'booking-cancellation' | 'booking-late-cancellation'
+  bookingNumber: string;  // 'BK_A1B2C3'
+  slotId: number;
+  classId: number;
+  gymId: number;
+  externalUserId: string; // unique_token do usuário Wellhub
+  externalName?: string;
+  externalEmail?: string;
+  userId?: number;        // FK → ClientUser (se vinculado)
+  status: BookingStatus;
+  rawPayload?: string;
+  confirmedAt?: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+interface BookingReservationCreate extends Optional<BookingReservationAttr,
+  'id' | 'externalName' | 'externalEmail' | 'userId' | 'rawPayload' | 'confirmedAt'> {}
+
+function initBookingReservation(seq: Sequelize) {
+  class BookingReservation extends Model<BookingReservationAttr, BookingReservationCreate> implements BookingReservationAttr {
+    public id!: number;
+    public eventId!: string;
+    public eventType!: string;
+    public bookingNumber!: string;
+    public slotId!: number;
+    public classId!: number;
+    public gymId!: number;
+    public externalUserId!: string;
+    public externalName?: string;
+    public externalEmail?: string;
+    public userId?: number;
+    public status!: BookingStatus;
+    public rawPayload?: string;
+    public confirmedAt?: Date;
+    public readonly createdAt!: Date;
+    public readonly updatedAt!: Date;
+  }
+  BookingReservation.init({
+    id:             { type: DataTypes.INTEGER.UNSIGNED, autoIncrement: true, primaryKey: true },
+    eventId:        { type: DataTypes.STRING(100), allowNull: false, unique: true },
+    eventType:      { type: DataTypes.STRING(60), allowNull: false },
+    bookingNumber:  { type: DataTypes.STRING(50), allowNull: false },
+    slotId:         { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
+    classId:        { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
+    gymId:          { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
+    externalUserId: { type: DataTypes.STRING(100), allowNull: false },
+    externalName:   { type: DataTypes.STRING(255), allowNull: true },
+    externalEmail:  { type: DataTypes.STRING(255), allowNull: true },
+    userId:         { type: DataTypes.INTEGER.UNSIGNED, allowNull: true, references: { model: 'users', key: 'id' } },
+    status:         { type: DataTypes.ENUM('pending', 'confirmed', 'rejected', 'cancelled', 'late-cancelled'), allowNull: false, defaultValue: 'pending' },
+    rawPayload:     { type: DataTypes.TEXT, allowNull: true },
+    confirmedAt:    { type: DataTypes.DATE, allowNull: true },
+  }, {
+    sequelize: seq,
+    tableName: 'booking_reservations',
+    indexes: [
+      { unique: true, fields: ['eventId'] },
+      { fields: ['bookingNumber'] },
+      { fields: ['status'] },
+      { fields: ['externalUserId'] },
+      { fields: ['userId'] },
+    ],
+  });
+  return BookingReservation;
+}
+
 // ─── IntegrationConfig ────────────────────────────────────────────────────────
 
 interface IntegrationConfigAttr {
@@ -772,9 +845,10 @@ export function createTenantModels(sequelize: Sequelize) {
   const CreditTransaction = initCreditTransaction(sequelize);
   const Item              = initItem(sequelize);
   const Transaction       = initTransaction(sequelize);
-  const ExternalCheckin   = initExternalCheckin(sequelize);
-  const IntegrationConfig = initIntegrationConfig(sequelize);
-  const PaymentConfig     = initPaymentConfig(sequelize);
+  const ExternalCheckin      = initExternalCheckin(sequelize);
+  const BookingReservation   = initBookingReservation(sequelize);
+  const IntegrationConfig    = initIntegrationConfig(sequelize);
+  const PaymentConfig        = initPaymentConfig(sequelize);
 
   // ── Associations ────────────────────────────────────────────────────────────
 
@@ -832,6 +906,9 @@ export function createTenantModels(sequelize: Sequelize) {
   // ExternalCheckin → ClientUser
   ExternalCheckin.belongsTo(ClientUser, { foreignKey: 'userId', as: 'user' });
 
+  // BookingReservation → ClientUser
+  BookingReservation.belongsTo(ClientUser, { foreignKey: 'userId', as: 'user' });
+
   return {
     sequelize,
     Role, Permission, RolePermission, UserRole,
@@ -842,7 +919,7 @@ export function createTenantModels(sequelize: Sequelize) {
     Class, ClassStudent, WaitingList,
     StudentCredit, CreditTransaction,
     Item, Transaction,
-    ExternalCheckin, IntegrationConfig, PaymentConfig,
+    ExternalCheckin, BookingReservation, IntegrationConfig, PaymentConfig,
   };
 }
 

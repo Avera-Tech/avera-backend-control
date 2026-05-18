@@ -9,6 +9,12 @@ import {
   manuallyRejectCheckin,
   WellhubCheckinPayload,
 } from '../services/wellhubService';
+import {
+  processWellhubBookingEvent,
+  confirmBookingReservation,
+  rejectBookingReservation,
+  WellhubBookingPayload,
+} from '../services/bookingService';
 
 const router = Router();
 
@@ -68,9 +74,10 @@ router.post('/wellhub/:clientId', async (req: Request, res: Response) => {
 
     // Booking event: payload contains event_type (e.g. "booking-requested")
     if (payload.event_type) {
-      console.log(`[Wellhub Webhook] Evento de booking recebido: ${payload.event_type}`);
       res.status(200).json({ received: true });
-      // TODO Etapa 2: processar eventos de booking
+      processWellhubBookingEvent(payload as WellhubBookingPayload, rawBody, db).catch((err) => {
+        console.error('[Wellhub Webhook] Erro no processamento do booking:', err);
+      });
       return;
     }
 
@@ -187,6 +194,55 @@ router.post('/checkins/accept-all', async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error('[Integrations] Erro no accept-all:', err);
     return res.status(500).json({ success: false, message: 'Erro ao aceitar check-ins' });
+  }
+});
+
+// ─── BOOKING RESERVATIONS ─────────────────────────────────────────────────────
+
+router.get('/bookings', async (req: Request, res: Response) => {
+  try {
+    const { BookingReservation } = req.tenantDb;
+    const { status, limit = '50', offset = '0' } = req.query;
+
+    const where: any = {};
+    if (status) where.status = status;
+
+    const reservations = await BookingReservation.findAndCountAll({
+      where,
+      limit: parseInt(limit as string),
+      offset: parseInt(offset as string),
+      order: [['createdAt', 'DESC']],
+      include: [{ association: 'user', attributes: ['id', 'name', 'email', 'phone'], required: false }],
+    });
+
+    return res.status(200).json({ success: true, total: reservations.count, data: reservations.rows });
+  } catch (err: any) {
+    console.error('[Integrations] Erro ao listar reservas:', err);
+    return res.status(500).json({ success: false, message: 'Erro ao buscar reservas' });
+  }
+});
+
+router.post('/bookings/:id/confirm', async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id);
+    const result = await confirmBookingReservation(id, req.tenantDb);
+    if (!result.success) return res.status(400).json({ success: false, message: result.error });
+    return res.status(200).json({ success: true, message: result.message });
+  } catch (err: any) {
+    console.error('[Integrations] Erro ao confirmar reserva:', err);
+    return res.status(500).json({ success: false, message: 'Erro ao confirmar reserva' });
+  }
+});
+
+router.post('/bookings/:id/reject', async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id);
+    const result = await rejectBookingReservation(id, req.tenantDb);
+    if (!result.success) return res.status(400).json({ success: false, message: result.error });
+    return res.status(200).json({ success: true, message: result.message });
+  } catch (err: any) {
+    console.error('[Integrations] Erro ao rejeitar reserva:', err);
+    return res.status(500).json({ success: false, message: 'Erro ao rejeitar reserva' });
   }
 });
 
