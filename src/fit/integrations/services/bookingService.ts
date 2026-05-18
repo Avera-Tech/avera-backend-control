@@ -120,10 +120,12 @@ export async function processWellhubBookingEvent(
     case 'booking-requested':
       await handleBookingRequested(payload, rawBody, db);
       break;
-    case 'booking-cancellation':
+    case 'booking-canceled':
+    case 'booking-cancellation': // fallback para variação de nomenclatura
       await handleBookingCancellation(payload, 'cancelled', db);
       break;
-    case 'booking-late-cancellation':
+    case 'booking-late-canceled':
+    case 'booking-late-cancellation': // fallback para variação de nomenclatura
       await handleBookingCancellation(payload, 'late-cancelled', db);
       break;
     default:
