@@ -166,22 +166,26 @@ function initOtpCode(seq: Sequelize) {
 // ─── UserLevel ────────────────────────────────────────────────────────────────
 
 interface UserLevelAttr {
-  id: number; name: string; color?: string | null; numberOfClasses?: number | null;
+  id: number; name: string; description?: string | null; color?: string | null;
+  numberOfClasses?: number | null; sortOrder?: number | null;
   active: boolean; createdAt?: Date; updatedAt?: Date;
 }
-interface UserLevelCreate extends Optional<UserLevelAttr, 'id' | 'color' | 'numberOfClasses' | 'active'> {}
+interface UserLevelCreate extends Optional<UserLevelAttr, 'id' | 'description' | 'color' | 'numberOfClasses' | 'sortOrder' | 'active'> {}
 
 function initUserLevel(seq: Sequelize) {
   class UserLevel extends Model<UserLevelAttr, UserLevelCreate> implements UserLevelAttr {
-    public id!: number; public name!: string; public color!: string | null;
-    public numberOfClasses!: number | null; public active!: boolean;
+    public id!: number; public name!: string; public description!: string | null;
+    public color!: string | null; public numberOfClasses!: number | null;
+    public sortOrder!: number | null; public active!: boolean;
     public readonly createdAt!: Date; public readonly updatedAt!: Date;
   }
   UserLevel.init({
     id: { type: DataTypes.INTEGER.UNSIGNED, autoIncrement: true, primaryKey: true },
     name: { type: DataTypes.STRING(50), allowNull: false },
+    description: { type: DataTypes.TEXT, allowNull: true },
     color: { type: DataTypes.STRING(20), allowNull: true },
     numberOfClasses: { type: DataTypes.INTEGER, allowNull: true },
+    sortOrder: { type: DataTypes.INTEGER, allowNull: true, field: 'sort_order' },
     active: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
   }, { sequelize: seq, tableName: 'user_levels', timestamps: true, underscored: false });
   return UserLevel;
@@ -290,16 +294,20 @@ function initModality(seq: Sequelize) {
 
 // ─── ProductType ──────────────────────────────────────────────────────────────
 
+export type BillingType = 'avulso' | 'recorrente' | 'plano' | 'cortesia';
+
 interface ProductTypeAttr {
   id: number; name: string; description?: string; color?: string; icon?: string;
+  billingType?: BillingType | null;
   active: boolean; createdAt?: Date; updatedAt?: Date;
 }
-interface ProductTypeCreate extends Optional<ProductTypeAttr, 'id' | 'description' | 'color' | 'icon' | 'active'> {}
+interface ProductTypeCreate extends Optional<ProductTypeAttr, 'id' | 'description' | 'color' | 'icon' | 'billingType' | 'active'> {}
 
 function initProductType(seq: Sequelize) {
   class ProductType extends Model<ProductTypeAttr, ProductTypeCreate> implements ProductTypeAttr {
     public id!: number; public name!: string; public description!: string;
-    public color!: string; public icon!: string; public active!: boolean;
+    public color!: string; public icon!: string; public billingType!: BillingType | null;
+    public active!: boolean;
     public readonly createdAt!: Date; public readonly updatedAt!: Date;
   }
   ProductType.init({
@@ -307,6 +315,7 @@ function initProductType(seq: Sequelize) {
     name: { type: DataTypes.STRING(100), allowNull: false, unique: true },
     description: { type: DataTypes.TEXT, allowNull: true },
     color: { type: DataTypes.STRING(20), allowNull: true },
+    billingType: { type: DataTypes.STRING(20), allowNull: true, field: 'billing_type' },
     icon: { type: DataTypes.STRING(100), allowNull: true },
     active: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
   }, { sequelize: seq, tableName: 'product_types', timestamps: true, underscored: false,

@@ -32,4 +32,11 @@ router.patch(
   ProductTypeController.update
 );
 
+router.delete(
+  '/:id',
+  authenticateToken,
+  checkPermissions(['products:delete']),
+  ProductTypeController.delete
+);
+
 export default router;

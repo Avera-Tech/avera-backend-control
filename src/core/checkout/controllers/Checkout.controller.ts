@@ -1,13 +1,20 @@
 import { Request, Response } from 'express';
 import { TenantDb } from '../../../config/tenantModels';
 import { saveTransaction } from './Transaction.controller';
-import { updateCustomerBalance } from './Balance.controller';
+import { addCreditsForItems } from './Balance.controller';
 import { checkPurchaseLimit, createItemsAfterTransaction } from './Items.controller';
 import {
   createCreditCardOrder,
   createCashOrder,
   PagarmeOrderItem,
 } from '../services/pagarme.service';
+import { decrypt } from '../../../utils/crypto';
+
+async function resolveApiKey(db: TenantDb): Promise<string> {
+  const config = await db.PaymentConfig.findOne({ where: { gateway: 'pagarme', active: true } });
+  if (!config) throw new Error('Gateway de pagamento não configurado. Configure o Pagar.me em Configurações.');
+  return decrypt(config.apiKey);
+}
 
 interface ProductRequest {
   productId: string;
@@ -89,6 +96,13 @@ export const checkoutCard = async (req: Request, res: Response): Promise<Respons
     const { ClientUser } = req.tenantDb;
     const { userId, products, payment, billingAddress }: CheckoutCardRequest = req.body;
 
+    let apiKey: string;
+    try {
+      apiKey = await resolveApiKey(req.tenantDb);
+    } catch (err: any) {
+      return res.status(402).json({ success: false, message: err.message });
+    }
+
     const user = await ClientUser.findByPk(userId);
     if (!user) {
       return res.status(404).json({ success: false, message: 'Aluno não encontrado.' });
@@ -115,7 +129,7 @@ export const checkoutCard = async (req: Request, res: Response): Promise<Respons
     const result = await createCreditCardOrder(customer, items, {
       ...payment,
       billingAddress,
-    });
+    }, apiKey);
 
     if (!result.success || result.data?.status !== 'paid') {
       return res.status(500).json({
@@ -130,7 +144,7 @@ export const checkoutCard = async (req: Request, res: Response): Promise<Respons
       return res.status(500).json({ success: false, message: 'Falha ao salvar transação.' });
     }
 
-    await updateCustomerBalance(Number(userId), creditTotal, result.data.id, true, productTypeId!, req.tenantDb);
+    await addCreditsForItems(Number(userId), items.map(i => ({ productId: Number(i.itemId), credits: i.credit, quantity: i.quantity })), result.data.id, req.tenantDb);
 
     try {
       await createItemsAfterTransaction(result.data.id, Number(userId), items, req.tenantDb);
@@ -153,6 +167,13 @@ export const checkoutCash = async (req: Request, res: Response): Promise<Respons
   try {
     const { ClientUser } = req.tenantDb;
     const { userId, products, cash }: CheckoutCashRequest = req.body;
+
+    let apiKey: string;
+    try {
+      apiKey = await resolveApiKey(req.tenantDb);
+    } catch (err: any) {
+      return res.status(402).json({ success: false, message: err.message });
+    }
 
     const user = await ClientUser.findByPk(userId);
     if (!user) {
@@ -177,7 +198,7 @@ export const checkoutCash = async (req: Request, res: Response): Promise<Respons
       type: 'individual' as const,
     };
 
-    const result = await createCashOrder(customer, items, cash ?? {});
+    const result = await createCashOrder(customer, items, cash ?? {}, apiKey);
 
     if (!result.success || result.data?.status !== 'paid') {
       return res.status(500).json({
@@ -192,7 +213,7 @@ export const checkoutCash = async (req: Request, res: Response): Promise<Respons
       return res.status(500).json({ success: false, message: 'Falha ao salvar transação.' });
     }
 
-    await updateCustomerBalance(Number(userId), creditTotal, result.data.id, true, productTypeId!, req.tenantDb);
+    await addCreditsForItems(Number(userId), items.map(i => ({ productId: Number(i.itemId), credits: i.credit, quantity: i.quantity })), result.data.id, req.tenantDb);
 
     try {
       await createItemsAfterTransaction(result.data.id, Number(userId), items, req.tenantDb);

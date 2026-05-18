@@ -3,10 +3,17 @@ import crypto from 'crypto';
 import { getTenantDb } from '../../../config/tenantConnectionManager';
 import TenantConfig from '../../../master/models/TenantConfig.model';
 import { savePendingPixTransaction } from './Transaction.controller';
-import { updateCustomerBalance } from './Balance.controller';
+import { updateCustomerBalance, addCreditsFromItemRows } from './Balance.controller';
 import { checkPurchaseLimit, createItemsAfterTransaction, activateItemsByTransaction } from './Items.controller';
 import { createPixOrder, PagarmeOrderItem } from '../services/pagarme.service';
 import { TenantDb } from '../../../config/tenantModels';
+import { decrypt } from '../../../utils/crypto';
+
+async function resolveApiKey(db: TenantDb): Promise<string> {
+  const config = await db.PaymentConfig.findOne({ where: { gateway: 'pagarme', active: true } });
+  if (!config) throw new Error('Gateway de pagamento não configurado. Configure o Pagar.me em Configurações.');
+  return decrypt(config.apiKey);
+}
 
 interface ProductRequest {
   productId: string;
@@ -29,6 +36,13 @@ export const checkoutPix = async (req: Request, res: Response): Promise<Response
   try {
     const { ClientUser, Product } = req.tenantDb;
     const { studentId, products, pix }: CheckoutPixRequest = req.body;
+
+    let apiKey: string;
+    try {
+      apiKey = await resolveApiKey(req.tenantDb);
+    } catch (err: any) {
+      return res.status(402).json({ success: false, message: err.message });
+    }
 
     const student = await ClientUser.findByPk(studentId);
     if (!student) {
@@ -82,7 +96,7 @@ export const checkoutPix = async (req: Request, res: Response): Promise<Response
 
     // Store clientId in metadata so the webhook can resolve the tenant DB
     const clientId = req.headers['x-client-id'] as string;
-    const result = await createPixOrder(customer, items, { ...(pix ?? {}), metadata: { clientId } });
+    const result = await createPixOrder(customer, items, { ...(pix ?? {}), metadata: { clientId } }, apiKey);
 
     if (!result.success) {
       return res.status(500).json({
@@ -128,23 +142,6 @@ export const checkoutPix = async (req: Request, res: Response): Promise<Response
 // Resolves tenant DB from clientId stored in order metadata at checkout time.
 export const pixWebhook = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const signature = req.headers['x-hub-signature'] as string;
-    if (signature && process.env.PAGARME_WEBHOOK_SECRET) {
-      const expected =
-        'sha256=' +
-        crypto
-          .createHmac('sha256', process.env.PAGARME_WEBHOOK_SECRET)
-          .update(JSON.stringify(req.body))
-          .digest('hex');
-
-      if (signature !== expected) {
-        console.warn('[PIX Webhook] Assinatura inválida');
-        return res.status(401).json({ message: 'Assinatura inválida.' });
-      }
-    }
-
-    res.status(200).json({ received: true });
-
     const { type, data } = req.body;
     const clientId = data?.metadata?.clientId as string | undefined;
 
@@ -167,6 +164,27 @@ export const pixWebhook = async (req: Request, res: Response): Promise<Response>
       dbPass: tenantConfig.dbPass,
       dbName: tenantConfig.dbName,
     });
+
+    // Validate signature using the tenant's webhook secret from DB
+    const signature = req.headers['x-hub-signature'] as string;
+    if (signature) {
+      const paymentConfig = await db.PaymentConfig.findOne({ where: { gateway: 'pagarme', active: true } });
+      const webhookSecret = paymentConfig?.webhookSecret ? decrypt(paymentConfig.webhookSecret) : null;
+
+      if (webhookSecret) {
+        const expected =
+          'sha256=' +
+          crypto
+            .createHmac('sha256', webhookSecret)
+            .update(JSON.stringify(req.body))
+            .digest('hex');
+
+        if (signature !== expected) {
+          console.warn('[PIX Webhook] Assinatura inválida');
+          return res.status(401).json({ message: 'Assinatura inválida.' });
+        }
+      }
+    }
 
     if (type === 'charge.paid') {
       await handlePixPaid(data, db);
@@ -201,14 +219,7 @@ async function handlePixPaid(chargeData: any, db: TenantDb) {
 
     await transaction.update({ status: 'paid', paidAt: new Date() });
 
-    await updateCustomerBalance(
-      transaction.studentId,
-      transaction.balance,
-      transaction.transactionId,
-      true,
-      transaction.productTypeId,
-      db
-    );
+    await addCreditsFromItemRows(transaction.studentId, transaction.transactionId, db);
 
     await activateItemsByTransaction(transaction.transactionId, db);
 
