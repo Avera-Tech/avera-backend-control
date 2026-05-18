@@ -1,4 +1,5 @@
 import { TenantDb } from '../../../config/tenantModels';
+import { validateWellhubBooking } from './bookingApiService';
 
 export interface WellhubBookingUser {
   unique_token: string;
@@ -135,15 +136,35 @@ export async function confirmBookingReservation(reservationId: number, db: Tenan
   if (!reservation) return { success: false, error: 'Reserva não encontrada' };
   if (reservation.status !== 'pending') return { success: false, error: `Reserva já está com status: ${reservation.status}` };
 
+  const config = await db.IntegrationConfig.findOne({ where: { platform: 'wellhub', active: true } });
+  if (!config) return { success: false, error: 'Integração Wellhub não configurada ou inativa' };
+
+  try {
+    await validateWellhubBooking(config.gymId, reservation.bookingNumber, reservation.classId, config.apiKey, 2);
+  } catch (err: any) {
+    console.error('[Wellhub Booking] Falha ao confirmar reserva na API:', err.message);
+    return { success: false, error: `Erro ao comunicar com Wellhub: ${err.message}` };
+  }
+
   await reservation.update({ status: 'confirmed', confirmedAt: new Date() });
-  return { success: true, message: 'Reserva confirmada' };
+  return { success: true, message: 'Reserva confirmada e notificada ao Wellhub' };
 }
 
-export async function rejectBookingReservation(reservationId: number, db: TenantDb) {
+export async function rejectBookingReservation(reservationId: number, db: TenantDb, reason?: string) {
   const reservation = await db.BookingReservation.findByPk(reservationId);
   if (!reservation) return { success: false, error: 'Reserva não encontrada' };
   if (reservation.status !== 'pending') return { success: false, error: `Reserva já está com status: ${reservation.status}` };
 
+  const config = await db.IntegrationConfig.findOne({ where: { platform: 'wellhub', active: true } });
+  if (!config) return { success: false, error: 'Integração Wellhub não configurada ou inativa' };
+
+  try {
+    await validateWellhubBooking(config.gymId, reservation.bookingNumber, reservation.classId, config.apiKey, 3, reason);
+  } catch (err: any) {
+    console.error('[Wellhub Booking] Falha ao rejeitar reserva na API:', err.message);
+    return { success: false, error: `Erro ao comunicar com Wellhub: ${err.message}` };
+  }
+
   await reservation.update({ status: 'rejected' });
-  return { success: true, message: 'Reserva rejeitada' };
+  return { success: true, message: 'Reserva rejeitada e notificada ao Wellhub' };
 }

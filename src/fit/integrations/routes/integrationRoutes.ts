@@ -15,6 +15,21 @@ import {
   rejectBookingReservation,
   WellhubBookingPayload,
 } from '../services/bookingService';
+import {
+  createWellhubClass,
+  listWellhubClasses,
+  updateWellhubClass,
+  createWellhubSlot,
+  listWellhubSlots,
+  patchWellhubSlot,
+  deleteWellhubSlot,
+} from '../services/bookingApiService';
+import type {
+  CreateClassPayload,
+  UpdateClassPayload,
+  CreateSlotPayload,
+  PatchSlotPayload,
+} from '../services/bookingApiService';
 
 const router = Router();
 
@@ -243,6 +258,108 @@ router.post('/bookings/:id/reject', async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error('[Integrations] Erro ao rejeitar reserva:', err);
     return res.status(500).json({ success: false, message: 'Erro ao rejeitar reserva' });
+  }
+});
+
+// ─── BOOKING API — CLASSES ────────────────────────────────────────────────────
+
+async function getWellhubApiConfig(req: Request, res: Response) {
+  const config = await req.tenantDb.IntegrationConfig.findOne({ where: { platform: 'wellhub', active: true } });
+  if (!config) {
+    res.status(400).json({ success: false, message: 'Integração Wellhub não configurada ou inativa' });
+    return null;
+  }
+  return config;
+}
+
+router.get('/booking/classes', async (req: Request, res: Response) => {
+  try {
+    const config = await getWellhubApiConfig(req, res);
+    if (!config) return;
+    const data = await listWellhubClasses(config.gymId, config.apiKey);
+    return res.status(200).json({ success: true, data });
+  } catch (err: any) {
+    return res.status(502).json({ success: false, message: err.message });
+  }
+});
+
+router.post('/booking/classes', async (req: Request, res: Response) => {
+  try {
+    const config = await getWellhubApiConfig(req, res);
+    if (!config) return;
+    const payload = req.body as CreateClassPayload;
+    const data = await createWellhubClass(config.gymId, config.apiKey, payload);
+    return res.status(201).json({ success: true, data });
+  } catch (err: any) {
+    return res.status(502).json({ success: false, message: err.message });
+  }
+});
+
+router.put('/booking/classes/:classId', async (req: Request, res: Response) => {
+  try {
+    const config = await getWellhubApiConfig(req, res);
+    if (!config) return;
+    const classId = parseInt(req.params.classId);
+    const payload = req.body as UpdateClassPayload;
+    await updateWellhubClass(config.gymId, classId, config.apiKey, payload);
+    return res.status(204).send();
+  } catch (err: any) {
+    return res.status(502).json({ success: false, message: err.message });
+  }
+});
+
+// ─── BOOKING API — SLOTS ──────────────────────────────────────────────────────
+
+router.get('/booking/classes/:classId/slots', async (req: Request, res: Response) => {
+  try {
+    const config = await getWellhubApiConfig(req, res);
+    if (!config) return;
+    const classId = parseInt(req.params.classId);
+    const { from, to } = req.query as { from?: string; to?: string };
+    const data = await listWellhubSlots(config.gymId, classId, config.apiKey, from, to);
+    return res.status(200).json({ success: true, data });
+  } catch (err: any) {
+    return res.status(502).json({ success: false, message: err.message });
+  }
+});
+
+router.post('/booking/classes/:classId/slots', async (req: Request, res: Response) => {
+  try {
+    const config = await getWellhubApiConfig(req, res);
+    if (!config) return;
+    const classId = parseInt(req.params.classId);
+    const payload = req.body as CreateSlotPayload;
+    const data = await createWellhubSlot(config.gymId, classId, config.apiKey, payload);
+    return res.status(201).json({ success: true, data });
+  } catch (err: any) {
+    return res.status(502).json({ success: false, message: err.message });
+  }
+});
+
+router.patch('/booking/classes/:classId/slots/:slotId', async (req: Request, res: Response) => {
+  try {
+    const config = await getWellhubApiConfig(req, res);
+    if (!config) return;
+    const classId = parseInt(req.params.classId);
+    const slotId = parseInt(req.params.slotId);
+    const payload = req.body as PatchSlotPayload;
+    await patchWellhubSlot(config.gymId, classId, slotId, config.apiKey, payload);
+    return res.status(204).send();
+  } catch (err: any) {
+    return res.status(502).json({ success: false, message: err.message });
+  }
+});
+
+router.delete('/booking/classes/:classId/slots/:slotId', async (req: Request, res: Response) => {
+  try {
+    const config = await getWellhubApiConfig(req, res);
+    if (!config) return;
+    const classId = parseInt(req.params.classId);
+    const slotId = parseInt(req.params.slotId);
+    await deleteWellhubSlot(config.gymId, classId, slotId, config.apiKey);
+    return res.status(204).send();
+  } catch (err: any) {
+    return res.status(502).json({ success: false, message: err.message });
   }
 });
 
