@@ -13,11 +13,12 @@ import {
 const router = Router();
 
 // ─── PUBLIC WEBHOOK ───────────────────────────────────────────────────────────
-// POST /api/webhooks/wellhub/:clientId/checkin
-// Called by Wellhub — no X-Client-Id or JWT auth.
+// POST /api/webhooks/wellhub/:clientId
+// Single endpoint for all Wellhub events (checkin + booking).
 // clientId in the URL identifies the tenant (configure this URL in Wellhub dashboard).
+// Event type is detected from the payload: presence of `event_type` = booking event.
 
-router.post('/wellhub/:clientId/checkin', async (req: Request, res: Response) => {
+router.post('/wellhub/:clientId', async (req: Request, res: Response) => {
   try {
     const { clientId } = req.params;
 
@@ -25,19 +26,24 @@ router.post('/wellhub/:clientId/checkin', async (req: Request, res: Response) =>
       ? req.body.toString('utf8')
       : JSON.stringify(req.body);
 
-    const tenantConfig = await TenantConfig.findOne({ where: { clientId } });
+    const tenantConfig = await TenantConfig.findOne({ where: { slug: clientId } });
     if (!tenantConfig) {
       console.warn(`[Wellhub Webhook] Tenant '${clientId}' não encontrado`);
       return res.status(200).json({ received: true });
     }
 
+    if (!tenantConfig.db_name || !tenantConfig.db_password) {
+      console.warn(`[Wellhub Webhook] Banco do tenant '${clientId}' não provisionado`);
+      return res.status(200).json({ received: true });
+    }
+
     const db = getTenantDb({
-      clientId: tenantConfig.clientId,
-      dbHost: tenantConfig.dbHost,
-      dbPort: tenantConfig.dbPort,
-      dbUser: tenantConfig.dbUser,
-      dbPass: tenantConfig.dbPass,
-      dbName: tenantConfig.dbName,
+      clientId: tenantConfig.slug,
+      dbHost:   process.env.DB_MASTER_HOST!,
+      dbPort:   Number(process.env.DB_TENANT_PORT) || 3306,
+      dbUser:   tenantConfig.db_name,
+      dbPass:   tenantConfig.db_password,
+      dbName:   tenantConfig.db_name,
     });
 
     const config = await getWellhubConfig(db);
@@ -58,16 +64,25 @@ router.post('/wellhub/:clientId/checkin', async (req: Request, res: Response) =>
       return res.status(401).json({ error: 'Assinatura inválida' });
     }
 
-    const payload: WellhubCheckinPayload = JSON.parse(rawBody);
+    const payload = JSON.parse(rawBody);
 
+    // Booking event: payload contains event_type (e.g. "booking-requested")
+    if (payload.event_type) {
+      console.log(`[Wellhub Webhook] Evento de booking recebido: ${payload.event_type}`);
+      res.status(200).json({ received: true });
+      // TODO Etapa 2: processar eventos de booking
+      return;
+    }
+
+    // Checkin event: payload contains gympass_id
     if (!payload.gympass_id) {
-      return res.status(400).json({ error: 'gympass_id é obrigatório' });
+      return res.status(400).json({ error: 'Payload inválido: gympass_id ou event_type são obrigatórios' });
     }
 
     res.status(200).json({ received: true });
 
-    processWellhubCheckin(payload, rawBody, config, db).catch((err) => {
-      console.error('[Wellhub Webhook] Erro no processamento:', err);
+    processWellhubCheckin(payload as WellhubCheckinPayload, rawBody, config, db).catch((err) => {
+      console.error('[Wellhub Webhook] Erro no processamento do checkin:', err);
     });
 
     return;
@@ -187,7 +202,7 @@ router.get('/config', async (req: Request, res: Response) => {
     const baseUrl = tenant?.control_api_url ?? `${req.protocol}://${req.get('host')}`;
 
     const webhookUrls: Record<string, string> = {
-      wellhub: `${baseUrl}/api/webhooks/wellhub/${clientId}/checkin`,
+      wellhub: `${baseUrl}/api/webhooks/wellhub/${clientId}`,
     };
 
     return res.status(200).json({ success: true, data: configs, webhookUrls });
