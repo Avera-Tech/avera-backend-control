@@ -33,6 +33,19 @@ import type {
 
 const router = Router();
 
+// Maps new unified checkin event format to the legacy WellhubCheckinPayload shape
+function normalizeCheckinPayload(payload: any): WellhubCheckinPayload {
+  const u = payload.event_data?.user ?? {};
+  const g = payload.event_data?.gym ?? {};
+  return {
+    gympass_id: u.unique_token ?? '',
+    gym_id: String(g.id ?? ''),
+    name: u.first_name && u.last_name ? `${u.first_name} ${u.last_name}` : u.first_name,
+    email: u.email,
+    plan_type: g.product?.description,
+  };
+}
+
 // ─── PUBLIC WEBHOOK ───────────────────────────────────────────────────────────
 // POST /api/webhooks/wellhub/:clientId
 // Single endpoint for all Wellhub events (checkin + booking).
@@ -87,7 +100,16 @@ router.post('/wellhub/:clientId', async (req: Request, res: Response) => {
 
     const payload = JSON.parse(rawBody);
 
-    // Booking event: payload contains event_type (e.g. "booking-requested")
+    // New unified event format: event_type discriminates event kind
+    if (payload.event_type === 'checkin') {
+      res.status(200).json({ received: true });
+      const normalized = normalizeCheckinPayload(payload);
+      processWellhubCheckin(normalized, rawBody, config, db).catch((err) => {
+        console.error('[Wellhub Webhook] Erro no processamento do checkin:', err);
+      });
+      return;
+    }
+
     if (payload.event_type) {
       res.status(200).json({ received: true });
       processWellhubBookingEvent(payload as WellhubBookingPayload, rawBody, db).catch((err) => {
@@ -96,13 +118,12 @@ router.post('/wellhub/:clientId', async (req: Request, res: Response) => {
       return;
     }
 
-    // Checkin event: payload contains gympass_id
+    // Legacy checkin format: direct gympass_id field
     if (!payload.gympass_id) {
       return res.status(400).json({ error: 'Payload inválido: gympass_id ou event_type são obrigatórios' });
     }
 
     res.status(200).json({ received: true });
-
     processWellhubCheckin(payload as WellhubCheckinPayload, rawBody, config, db).catch((err) => {
       console.error('[Wellhub Webhook] Erro no processamento do checkin:', err);
     });

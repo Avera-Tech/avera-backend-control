@@ -3,7 +3,7 @@ import { TenantDb } from '../../../config/tenantModels';
 
 export interface WellhubCheckinPayload {
   gympass_id: string;
-  gym_id: string;
+  gym_id?: string;
   name?: string;
   email?: string;
   plan_type?: string;
