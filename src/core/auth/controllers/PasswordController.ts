@@ -47,8 +47,9 @@ export class PasswordController {
         });
       }
 
+      const clientId = req.headers['x-client-id'] as string;
       const resetToken = PasswordService.generateResetToken(staff.id, staff.email);
-      const resetLink = PasswordService.buildResetLink(resetToken);
+      const resetLink = PasswordService.buildResetLink(resetToken, clientId);
       await sendEmail(staff.email, 'Redefinição de senha', buildResetEmailHtml(staff.name, resetLink));
 
       return res.status(200).json({

@@ -6,8 +6,8 @@ const PASSWORD_REGEX =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[ !"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]).{8,}$/;
 
 const RESET_TOKEN_EXPIRY = '1h';
-const FRONTEND_RESET_URL =
-  process.env.FRONTEND_RESET_URL || 'http://localhost:5173/reset-password?token=';
+// TODO: mover para env var (FRONTEND_BASE_URL) quando definirmos o domínio final
+const FRONTEND_BASE_URL = 'https://admin.averafit.app';
 
 export class PasswordService {
   static validateStrength(password: string): boolean {
@@ -36,8 +36,8 @@ export class PasswordService {
     }
   }
 
-  static buildResetLink(token: string): string {
-    return `${FRONTEND_RESET_URL}${token}`;
+  static buildResetLink(token: string, clientId: string): string {
+    return `${FRONTEND_BASE_URL}/${clientId}/reset-password?token=${token}`;
   }
 
   static async resetPassword(
