@@ -32,6 +32,7 @@ router.get('/store/products', authenticateStudent, ProductController.list);
 
 // ── Aulas ─────────────────────────────────────────────────────────────────────
 router.get('/classes', authenticateStudent, StudentClassController.list);
+router.get('/student/enrollments', authenticateStudent, StudentClassController.myEnrollments);
 router.post('/classes/:id/enroll', authenticateStudent, StudentClassController.enroll);
 router.post('/classes/:id/cancel', authenticateStudent, StudentClassController.cancel);
 

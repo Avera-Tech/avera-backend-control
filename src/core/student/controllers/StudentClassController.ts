@@ -253,4 +253,74 @@ export class StudentClassController {
             return res.status(status).json({ success: false, error: error.message ?? 'Erro ao cancelar' });
         }
     }
+
+    /**
+     * GET /app/v1/student/enrollments?status=enrolled|attended|all
+     *
+     * Retorna as matrículas do aluno logado com dados completos da aula.
+     * status=enrolled  → próximas aulas (padrão)
+     * status=attended  → aulas realizadas
+     * status=all       → todas
+     */
+    static async myEnrollments(req: Request, res: Response): Promise<Response> {
+        try {
+            if (!req.student) {
+                return res.status(401).json({ success: false, error: 'Não autenticado' });
+            }
+
+            const studentId = req.student.studentId;
+            const statusParam = String(req.query.status || 'enrolled');
+
+            const { ClassStudent, Class, Staff, Place, Modality } = req.tenantDb;
+
+            const where: Record<string, unknown> = { user_id: studentId };
+
+            if (statusParam !== 'all') {
+                where.status = statusParam;
+            }
+
+            const enrollments = await ClassStudent.findAll({
+                where,
+                include: [
+                    {
+                        model: Class,
+                        as: 'class',
+                        include: [
+                            { model: Staff, as: 'teacher', attributes: ['id', 'name'] },
+                            { model: Place, as: 'place', attributes: ['id', 'name'] },
+                            { model: Modality, as: 'modality', attributes: ['id', 'name', 'color'] },
+                        ],
+                    },
+                ],
+                order: [
+                    [{ model: Class, as: 'class' }, 'date', statusParam === 'attended' ? 'DESC' : 'ASC'],
+                    [{ model: Class, as: 'class' }, 'time', 'ASC'],
+                ],
+            });
+
+            const data = enrollments.map((e: any) => ({
+                enrollmentId: e.id,
+                status: e.status,
+                checkin: e.checkin,
+                checkinAt: e.checkin_at,
+                class: {
+                    id: e.class.id,
+                    date: e.class.date,
+                    time: e.class.time,
+                    teacher: e.class.teacher,
+                    place: e.class.place,
+                    modality: e.class.modality,
+                },
+            }));
+
+            return res.json({ success: true, data });
+        } catch (error: any) {
+            console.error('[StudentClassController.myEnrollments]', error);
+            return res.status(500).json({
+                success: false,
+                error: 'Erro ao buscar matrículas',
+                message: process.env.NODE_ENV === 'development' ? error.message : undefined,
+            });
+        }
+    }
 }
