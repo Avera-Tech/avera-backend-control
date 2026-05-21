@@ -22,6 +22,7 @@ import paymentConfigRoutes from '../core/payment/routes/payment-config.routes';
 import companyRoutes from './company.routes';
 import integrationRoutes from '../fit/integrations/routes/integrationRoutes';
 import { pixWebhook } from '../core/checkout/controllers/Pix.controller';
+import dashboardRoutes from './dashboard.routes';
 
 const router = Router();
 
@@ -70,5 +71,6 @@ router.use('/theme', themeRoutes);
 router.use('/payment-config', paymentConfigRoutes);
 router.use('/company', companyRoutes);
 router.use('/integrations', integrationRoutes);
+router.use('/dashboard', dashboardRoutes);
 
 export default router;
