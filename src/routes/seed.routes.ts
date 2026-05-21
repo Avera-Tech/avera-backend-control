@@ -129,9 +129,9 @@ router.post('/admin', async (req: Request, res: Response) => {
 
   try {
     const { Staff, Role, UserRole } = req.tenantDb;
-    const adminEmail    = process.env.ADMIN_EMAIL    || 'admin@averact.com';
-    const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@2025';
-    const adminName     = process.env.ADMIN_NAME     || 'Administrador Avera';
+    const adminEmail    = req.body?.email    || process.env.ADMIN_EMAIL    || 'admin@averact.com';
+    const adminPassword = req.body?.password || process.env.ADMIN_PASSWORD || 'Admin@2025';
+    const adminName     = req.body?.name     || process.env.ADMIN_NAME     || 'Administrador Avera';
 
     const existingStaff = await Staff.findOne({ where: { email: adminEmail } });
     if (existingStaff) {
