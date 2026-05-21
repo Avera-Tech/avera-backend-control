@@ -35,6 +35,42 @@ function validateDatetime(date: unknown, time: unknown): string | null {
   return null;
 }
 
+export async function getClassStats(req: Request, res: Response): Promise<Response> {
+  try {
+    const { Class, ClassStudent } = req.tenantDb;
+
+    const date_from = req.query.date_from ? String(req.query.date_from) : undefined;
+    const date_to   = req.query.date_to   ? String(req.query.date_to)   : undefined;
+
+    if (!date_from || !date_to) {
+      return res.status(400).json({ success: false, message: 'date_from e date_to são obrigatórios' });
+    }
+
+    const classes = await Class.findAll({
+      where: { date: { [Op.between]: [date_from, date_to] } },
+      attributes: ['id'],
+    });
+
+    const classIds = classes.map((c) => c.id);
+
+    if (classIds.length === 0) {
+      return res.json({ success: true, data: { total: 0, attended: 0, rate: 0 } });
+    }
+
+    const [total, attended] = await Promise.all([
+      ClassStudent.count({ where: { class_id: classIds, status: { [Op.ne]: 'cancelled' } } }),
+      ClassStudent.count({ where: { class_id: classIds, status: 'attended' } }),
+    ]);
+
+    const rate = total > 0 ? Math.round((attended / total) * 100) : 0;
+
+    return res.json({ success: true, data: { total, attended, rate } });
+  } catch (err: unknown) {
+    console.error('getClassStats error:', err);
+    return res.status(500).json({ success: false, message: 'Erro ao calcular estatísticas' });
+  }
+}
+
 export async function createClass(req: Request, res: Response): Promise<Response> {
   try {
     const { Class, Staff, Modality } = req.tenantDb;

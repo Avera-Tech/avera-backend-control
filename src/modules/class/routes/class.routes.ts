@@ -7,6 +7,7 @@ import {
   updateClass,
   cancelClass,
   deleteClass,
+  getClassStats,
 } from '../controllers/classController';
 import {
   listEnrollments,
@@ -19,6 +20,7 @@ import {
 const router = Router();
 
 router.get('/', authenticateToken, listClasses);
+router.get('/stats', authenticateToken, getClassStats);
 router.post('/', authenticateToken, createClass);
 router.get('/:id', authenticateToken, getClassById);
 router.patch('/:id', authenticateToken, updateClass);
