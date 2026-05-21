@@ -92,6 +92,11 @@ export async function listClasses(req: Request, res: Response): Promise<Response
 
     if (req.query.date) {
       where.date = String(req.query.date);
+    } else if (req.query.date_from || req.query.date_to) {
+      const range: Record<symbol, string> = {};
+      if (req.query.date_from) range[Op.gte] = String(req.query.date_from);
+      if (req.query.date_to)   range[Op.lte] = String(req.query.date_to);
+      where.date = range;
     } else {
       where.date = { [Op.gte]: todayString() };
     }
